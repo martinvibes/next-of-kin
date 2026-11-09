@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Seal } from "@/components/Seal";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { LiveStrip } from "@/components/LiveStrip";
+import { StatusBanner } from "@/components/StatusBanner";
 
 const PROMISES = [
   {
@@ -32,6 +33,7 @@ const UNKNOWNS = [
 export default function Home() {
   return (
     <>
+      <StatusBanner />
       <SiteHeader />
       <main id="main">
         {/* ─── Hero ─────────────────────────────────────────────── */}
