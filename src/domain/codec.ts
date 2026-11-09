@@ -88,7 +88,7 @@ export const memorySchema = z.discriminatedUnion("kind", [
       reason: z.string().max(280),
       lastCheckin: iso.nullable(),
       lastOnchain: iso.nullable(),
-      verifiedVia: z.literal("tatum"),
+      verifiedVia: z.enum(["tatum", "fixtures", "checkins"]),
     })
     .strict(),
 ]);

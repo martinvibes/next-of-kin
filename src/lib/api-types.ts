@@ -102,6 +102,7 @@ export interface RebuildResponse {
   queries: string[];
   complete: boolean;
   tookMs: number;
+  message: string;
 }
 
 export interface ApiError {

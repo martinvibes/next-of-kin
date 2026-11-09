@@ -238,11 +238,14 @@ body::before {
 .field-letter {
   font-family: var(--font-serif);
   font-size: 1.0625rem;
-  line-height: 1.7;
+  line-height: 1.75rem;
   background: transparent;
+  background-image: linear-gradient(transparent calc(1.75rem - 1px), var(--rule-soft) calc(1.75rem - 1px));
+  background-size: 100% 1.75rem;
+  background-attachment: local;
   box-shadow: none;
   border-radius: 0;
-  padding: 0.25rem 0;
+  padding: 0;
   resize: none;
 }
 .field-letter:hover,

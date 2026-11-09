@@ -109,7 +109,8 @@ export interface ReleaseMemory extends MemoryBase {
   reason: string;
   lastCheckin: string | null;
   lastOnchain: string | null;
-  verifiedVia: "tatum";
+  /** how the absence of life was verified: live Tatum lookup, labelled fixtures, or check-ins only (no Sui wallet to watch) */
+  verifiedVia: "tatum" | "fixtures" | "checkins";
 }
 
 export type NokMemory =
