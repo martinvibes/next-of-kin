@@ -6,7 +6,7 @@ export function bytesToB64url(bytes: Uint8Array): string {
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export function b64urlToBytes(s: string): Uint8Array {
+export function b64urlToBytes(s: string): Uint8Array<ArrayBuffer> {
   if (!/^[A-Za-z0-9_-]*$/.test(s)) throw new Error("invalid base64url");
   const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
   const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);

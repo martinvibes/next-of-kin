@@ -284,8 +284,16 @@ export interface Question {
   target: string;
   walletId: string;
   assetKey?: string;
-  /** percentage points of readiness gained if answered (0..100, 1 decimal) */
+  /** percentage points of readiness gained immediately if answered (0..100, 1 decimal) */
   impactPct: number;
+  /**
+   * Fair share of the readiness gap this answer is responsible for: each
+   * uncovered asset's share of the score is split equally across its missing
+   * answers. Sums to (100 − score) across all questions, so it orders
+   * questions by money protected even before any single answer completes an
+   * asset (when every impactPct is still 0). 1 decimal.
+   */
+  sharePct: number;
   /** USD value that becomes covered if answered */
   usdAtStake: number;
   /** context for the template */
