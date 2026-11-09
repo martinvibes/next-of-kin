@@ -23,7 +23,7 @@ export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey;
         right={
           <button
             type="button"
-            className="ml-1 rounded-full px-3 py-1.5 text-ink-2 hover:text-ink"
+            className="rounded-full px-2.5 py-1.5 text-ink-2 hover:text-ink sm:ml-1 sm:px-3"
             onClick={() => {
               setOwnerSecret(null);
               onLock();

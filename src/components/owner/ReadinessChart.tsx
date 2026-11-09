@@ -20,7 +20,7 @@ function fmtDate(iso: string, withTime: boolean) {
  */
 export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
   const wrap = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(560);
+  const [w, setW] = useState(300);
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
 
@@ -61,7 +61,7 @@ export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
   }
 
   return (
-    <section className="sheet p-6 sm:p-7" aria-labelledby="chart-title">
+    <section className="sheet min-w-0 p-6 sm:p-7" aria-labelledby="chart-title">
       <div className="flex items-baseline justify-between gap-4">
         <h2 id="chart-title" className="t-serif text-[1.35rem]">
           Readiness over time
@@ -74,7 +74,7 @@ export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
       </div>
       <p className="mt-1 text-sm text-ink-2">Each point is a snapshot kept on Walrus whenever the score moves.</p>
 
-      <div ref={wrap} className="relative mt-5">
+      <div ref={wrap} className="relative mt-5 w-full min-w-0">
         {!geo ? (
           <div className="grid h-[180px] place-items-center rounded-lg border border-dashed border-rule text-center text-sm text-ink-2">
             <p className="max-w-xs px-4">Your first snapshot is written after the first scan. Answer a question and watch the line climb.</p>

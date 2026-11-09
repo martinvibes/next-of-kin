@@ -70,7 +70,7 @@ export function SwitchCard({ o }: { o: OwnerCtx }) {
   const frac = left !== null ? Math.min(1, Math.max(0, left / total)) : 0;
 
   return (
-    <section className="sheet flex flex-col p-6 sm:p-7" aria-labelledby="switch-title">
+    <section className="sheet flex min-w-0 flex-col p-6 sm:p-7" aria-labelledby="switch-title">
       <div className="flex items-start justify-between gap-4">
         <h2 id="switch-title" className="t-serif text-[1.35rem]">
           The switch

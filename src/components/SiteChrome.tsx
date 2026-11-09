@@ -5,7 +5,7 @@ export function Wordmark({ className }: { className?: string }) {
   return (
     <Link href="/" className={`group inline-flex items-center gap-2.5 text-ink ${className ?? ""}`} aria-label="Next of Kin, home">
       <SealMark size={26} className="text-brass transition-transform duration-500 group-hover:rotate-[30deg]" />
-      <span className="t-display text-[1.35rem] leading-none tracking-[-0.01em]">Next of Kin</span>
+      <span className="t-display text-[1.2rem] leading-none tracking-[-0.01em] whitespace-nowrap sm:text-[1.35rem]">Next of Kin</span>
     </Link>
   );
 }
@@ -20,7 +20,7 @@ export function SiteHeader({ current, right }: { current?: "owner" | "heir" | "p
   return (
     <header className="no-print mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
       <Wordmark />
-      <nav className="flex items-center gap-1 text-[0.9375rem]" aria-label="Main">
+      <nav className="flex items-center gap-0 text-[0.875rem] sm:gap-1 sm:text-[0.9375rem]" aria-label="Main">
         {NAV.map((n) => {
           const active = current && n.href === `/${current}`;
           return (
@@ -28,7 +28,7 @@ export function SiteHeader({ current, right }: { current?: "owner" | "heir" | "p
               key={n.href}
               href={n.href}
               aria-current={active ? "page" : undefined}
-              className={`rounded-full px-3 py-1.5 transition-colors ${active ? "bg-sheet text-ink shadow-[0_0_0_1px_var(--rule)]" : "text-ink-2 hover:text-ink"}`}
+              className={`rounded-full px-2.5 py-1.5 transition-colors sm:px-3 ${active ? "bg-sheet text-ink shadow-[0_0_0_1px_var(--rule)]" : "text-ink-2 hover:text-ink"}`}
             >
               {n.label}
             </Link>
