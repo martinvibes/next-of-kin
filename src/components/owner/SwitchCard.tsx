@@ -1,138 +1,152 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { HeartPulse } from "lucide-react";
 import { formatInterval, relativeTime } from "@/domain/format";
 import type { SwitchStatus } from "@/domain/types";
-import { ApiFailure } from "@/lib/client";
+import { countdown, useNow } from "@/lib/time";
 import type { OwnerCtx } from "./useOwner";
-
-function useNow(ms = 1000) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), ms);
-    return () => clearInterval(t);
-  }, [ms]);
-  return now;
-}
-
-/** "2d 4h", "3h 12m", "4m 09s" */
-export function countdown(ms: number) {
-  if (ms <= 0) return "now";
-  const s = Math.floor(ms / 1000);
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
-  return `${m}m ${String(sec).padStart(2, "0")}s`;
-}
+import type { Checkin } from "./Dashboard";
 
 const PHASE: Record<SwitchStatus["phase"], { label: string; cls: string }> = {
-  setup: { label: "Not set up", cls: "bg-sheet-2 text-ink-2" },
-  alive: { label: "Sealed", cls: "bg-moss-wash text-moss" },
-  overdue: { label: "Overdue", cls: "bg-amber-wash text-amber" },
-  released: { label: "Released to heir", cls: "bg-claret-wash text-claret" },
+  setup: { label: "Not set up", cls: "pill-muted" },
+  alive: { label: "Sealed", cls: "pill-mint" },
+  overdue: { label: "Overdue", cls: "pill-amber" },
+  released: { label: "Released", cls: "pill-rose" },
 };
 
-export function SwitchCard({ o }: { o: OwnerCtx }) {
+const SOURCE: Record<string, string> = {
+  onchain: "On-chain transaction, seen via Tatum",
+  checkin: "Check-in",
+  profile: "Vault setup",
+};
+
+/** The dead man's switch, drawn as a heartbeat: real beats, then a flat line to the release. */
+export function LifeCard({ o, ci, className = "" }: { o: OwnerCtx; ci: Checkin; className?: string }) {
   const sw = o.state?.switch ?? null;
   const now = useNow();
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const target = sw?.phase === "alive" ? sw.dueAt : sw?.phase === "overdue" ? sw.releaseAt : null;
-  const left = target ? new Date(target).getTime() - now : null;
-
-  // When a boundary passes, ask the server for the new phase.
-  useEffect(() => {
-    if (left !== null && left <= 0 && left > -2500) o.loadState().catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [left !== null && left <= 0]);
-
-  async function alive() {
-    setBusy(true);
-    try {
-      await o.checkin();
-      setDone(true);
-      setTimeout(() => setDone(false), 2600);
-    } catch (e) {
-      o.setError(e instanceof ApiFailure ? e.message : "Check-in failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const phase = sw ? PHASE[sw.phase] : null;
-  const hasSui = !!o.state?.state.wallets.some((w) => w.chain === "sui");
   const heir = o.dec?.heirName || "your heir";
-  const total = sw ? (sw.phase === "overdue" ? sw.graceSec : sw.intervalSec) * 1000 : 1;
-  const frac = left !== null ? Math.min(1, Math.max(0, left / total)) : 0;
+  const hasSui = !!o.state?.state.wallets.some((w) => w.chain === "sui");
+  const beats = (o.state?.memories ?? []).filter((m) => m.memory.kind === "checkin").map((m) => Date.parse(m.memory.ts));
+  if (sw?.lastAlive) beats.push(Date.parse(sw.lastAlive));
 
   return (
-    <section className="sheet flex min-w-0 flex-col p-6 sm:p-7" aria-labelledby="switch-title">
-      <div className="flex items-start justify-between gap-4">
-        <h2 id="switch-title" className="t-serif text-[1.35rem]">
-          The switch
+    <section className={`card flex min-w-0 flex-col overflow-hidden ${sw?.phase === "overdue" ? "glow-amber" : sw?.phase === "released" ? "glow-rose" : ""} ${className}`} aria-labelledby="life-title">
+      <div className="card-head">
+        <h2 id="life-title" className="card-title">
+          <HeartPulse className="size-4" aria-hidden="true" />
+          Proof of life
         </h2>
-        {phase && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${phase.cls}`}>{phase.label}</span>}
+        {sw && <span className={`pill ${PHASE[sw.phase].cls}`}>{PHASE[sw.phase].label}</span>}
       </div>
 
-      {!sw ? (
-        <p className="mt-6 text-ink-2 animate-pulse-soft">Reading…</p>
-      ) : sw.phase === "released" ? (
-        <div className="mt-5 space-y-3">
-          <p className="t-serif text-[1.15rem] leading-snug">
-            Your letter has been released to {heir}. Check in to seal it again.
-          </p>
-          <p className="text-sm text-ink-2">Every release is written to Walrus as an audit memory.</p>
-        </div>
-      ) : (
-        <>
-          <p className="mt-5 text-sm text-ink-2">{sw.phase === "overdue" ? `Released to ${heir} in` : `Opens for ${heir} in`}</p>
-          <p className={`t-display t-num mt-1 text-[2.6rem] leading-none ${sw.phase === "overdue" ? "text-amber" : ""}`} aria-live="off">
-            {left !== null ? countdown(left) : "—"}
-          </p>
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-sheet-2" aria-hidden="true">
-            <div className={`h-full rounded-full transition-[width] duration-1000 ease-linear ${sw.phase === "overdue" ? "bg-amber" : "bg-ink"}`} style={{ width: `${frac * 100}%` }} />
+      <div className="flex flex-1 flex-col px-5 pt-4 pb-5">
+        {!sw ? (
+          <div className="space-y-3">
+            <div className="skeleton h-4 w-32" />
+            <div className="skeleton h-10 w-40" />
+            <div className="skeleton h-14 w-full" />
           </div>
-          {sw.phase === "overdue" && <p className="mt-3 text-sm text-amber">You missed a check-in. A grace period has started.</p>}
-        </>
-      )}
+        ) : sw.phase === "released" ? (
+          <>
+            <p className="text-[0.8125rem] text-fg-3">Status</p>
+            <p className="mt-1 text-[1.15rem] leading-snug font-semibold">Your letter is open to {heir}.</p>
+            <p className="mt-1 text-[0.8125rem] text-fg-2">Check in to seal it again. The release was recorded as a memory.</p>
+          </>
+        ) : (
+          <>
+            <p className="text-[0.8125rem] text-fg-3">{sw.phase === "overdue" ? `Opens for ${heir} in` : `Next check-in due in`}</p>
+            <p className={`t-num mt-0.5 text-[2.1rem] leading-none font-semibold tracking-[-0.03em] ${sw.phase === "overdue" ? "text-amber" : ""}`}>{ci.left ?? "—"}</p>
+          </>
+        )}
 
-      {sw && (
-        <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-rule-soft pt-4 text-sm">
-          <div>
-            <dt className="text-ink-3">Last sign of life</dt>
-            <dd className="mt-0.5">
-              {sw.lastAlive ? relativeTime(sw.lastAlive, new Date(now).toISOString()) : "—"}
-              <span className="block text-xs text-ink-2">
-                {sw.lastAliveSource === "onchain" ? "an on-chain transaction, seen via Tatum" : sw.lastAliveSource === "checkin" ? "a check-in" : sw.lastAliveSource === "profile" ? "vault setup" : ""}
-              </span>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-ink-3">Check-in every</dt>
-            <dd className="mt-0.5">
-              {formatInterval(sw.intervalSec)}
-              {o.status.demoInterval && <span className="ml-1.5 rounded bg-amber-wash px-1.5 py-0.5 text-[0.7rem] font-semibold text-amber">demo</span>}
-              <span className="block text-xs text-ink-2">plus {formatInterval(sw.graceSec)} grace</span>
-            </dd>
-          </div>
-        </dl>
-      )}
-      {sw && !sw.onchainAvailable && (
-        <p className="mt-3 text-xs text-ink-2">
-          {hasSui ? "Couldn't read on-chain activity just now, so only check-ins count." : "Add a Sui wallet and its outgoing transactions count as check-ins too."}
+        {sw && sw.phase !== "setup" && <LifeLine sw={sw} now={now} beats={beats} />}
+
+        {sw && (
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line pt-4 text-[0.8125rem]">
+            <div className="min-w-0">
+              <dt className="text-fg-3">Last sign of life</dt>
+              <dd className="mt-0.5 font-medium">{sw.lastAlive ? relativeTime(sw.lastAlive, new Date(now).toISOString()) : "—"}</dd>
+              <dd className="text-[0.72rem] text-fg-3">{SOURCE[sw.lastAliveSource ?? ""] ?? ""}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-fg-3">Check-in every</dt>
+              <dd className="mt-0.5 flex items-center gap-1.5 font-medium">
+                {formatInterval(sw.intervalSec)}
+                {o.status.demoInterval && <span className="pill pill-amber !h-5 !text-[0.65rem]">demo</span>}
+              </dd>
+              <dd className="text-[0.72rem] text-fg-3">then {formatInterval(sw.graceSec)} grace</dd>
+            </div>
+          </dl>
+        )}
+        <p className="mt-auto pt-4 text-[0.75rem] text-fg-3">
+          {sw && !sw.onchainAvailable && hasSui
+            ? "Couldn't read on-chain activity just now, so only check-ins count."
+            : hasSui
+              ? "Any outgoing transaction from your Sui wallets counts as a check-in."
+              : "Add a Sui wallet and its transactions count as check-ins too."}
         </p>
-      )}
-
-      <div className="mt-auto flex items-center gap-3 pt-6">
-        <button type="button" className="btn btn-primary" onClick={alive} disabled={busy || !sw || sw.phase === "setup"}>
-          {busy ? "Checking in…" : done ? "Checked in" : "I'm still here"}
-        </button>
-        {hasSui && <p className="text-xs text-ink-2">Any transaction from your Sui wallets also counts.</p>}
       </div>
     </section>
   );
 }
+
+function LifeLine({ sw, now, beats }: { sw: SwitchStatus; now: number; beats: number[] }) {
+  if (!sw.lastAlive || !sw.dueAt || !sw.releaseAt) return null;
+  const alive = Date.parse(sw.lastAlive);
+  const due = Date.parse(sw.dueAt);
+  const release = Date.parse(sw.releaseAt);
+  const span = release - alive;
+  const t0 = alive - span * 0.22;
+  const t1 = release;
+  const W = 600;
+  const H = 64;
+  const mid = 38;
+  const x = (t: number) => ((Math.min(Math.max(t, t0), t1) - t0) / (t1 - t0)) * W;
+  const nowX = x(now);
+  const dueX = x(due);
+  const released = sw.phase === "released";
+
+  const xs: number[] = [];
+  for (const bx of beats.filter((b) => b >= t0 && b <= now).map((b) => Math.round(x(b))).sort((a, b) => a - b)) {
+    if (bx >= 8 && (xs.length === 0 || bx - xs[xs.length - 1] >= 20)) xs.push(bx);
+  }
+  let d = `M 0 ${mid}`;
+  let end = 0;
+  for (const bx of xs) {
+    d += ` L ${bx - 8} ${mid} L ${bx - 4} ${mid - 6} L ${bx} ${mid - 28} L ${bx + 4} ${mid + 16} L ${bx + 8} ${mid - 4} L ${bx + 11} ${mid}`;
+    end = bx + 11;
+  }
+  const head = Math.max(nowX, end);
+  d += ` L ${head} ${mid}`;
+
+  return (
+    <div className="mt-4" aria-hidden="true">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-16 w-full overflow-visible">
+        <defs>
+          <linearGradient id="beat-fade" x1="0" x2="1">
+            <stop offset="0" stopColor="#5ce9c6" stopOpacity="0.15" />
+            <stop offset="0.3" stopColor="#5ce9c6" stopOpacity="1" />
+          </linearGradient>
+        </defs>
+        <rect x={dueX} y={6} width={Math.max(0, W - dueX)} height={H - 12} rx={6} fill="rgba(246,185,86,0.07)" />
+        <line x1={dueX} x2={dueX} y1={6} y2={H - 6} stroke="rgba(246,185,86,0.45)" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+        <path d={d} fill="none" stroke={released ? "#ff6f86" : "url(#beat-fade)"} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        {!released && <line x1={head} x2={W} y1={mid} y2={mid} stroke="rgba(255,255,255,0.18)" strokeWidth={2} strokeDasharray="2 6" vectorEffect="non-scaling-stroke" />}
+      </svg>
+      <div className="relative -mt-16 h-16">
+        {!released && <span className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-mint animate-beat" style={{ left: `${(head / W) * 100}%`, top: `${(mid / H) * 100}%` }} />}
+      </div>
+      <div className="relative mt-1 h-4 text-[0.68rem] text-fg-3">
+        <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${(x(alive) / W) * 100}%` }}>
+          Last beat
+        </span>
+        <span className="absolute -translate-x-1/2 text-amber/80" style={{ left: `${(dueX / W) * 100}%` }}>
+          Due
+        </span>
+        <span className="absolute right-0">Opens</span>
+      </div>
+    </div>
+  );
+}
+
+export { countdown };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Copy, ExternalLink } from "lucide-react";
 import type { StoredMemory } from "@/domain/types";
 import { summarize } from "@/domain/codec";
 
@@ -15,7 +16,7 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
   return (
     <button
       type="button"
-      className="rounded px-1.5 py-0.5 text-xs text-ink-2 hover:bg-ink/5 hover:text-ink"
+      className="inline-grid size-7 shrink-0 place-items-center rounded-md text-fg-3 transition-colors hover:bg-white/5 hover:text-fg"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(value);
@@ -25,60 +26,52 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
           /* clipboard blocked */
         }
       }}
-      aria-label={`${label} ${value}`}
+      aria-label={done ? "Copied" : `${label} ${value}`}
+      title={done ? "Copied" : label}
     >
-      {done ? "Copied" : label}
+      {done ? <Check className="size-3.5 text-mint" /> : <Copy className="size-3.5" />}
     </button>
   );
 }
 
 export function BlobLink({ blobId, mock }: { blobId: string; mock?: boolean }) {
-  if (mock) return <span className="t-mono text-ink-2">{shortBlob(blobId)}</span>;
+  if (mock) return <span className="t-mono text-[0.8rem] text-fg-2" title="Mock store: no real blob">{shortBlob(blobId)}</span>;
   return (
-    <a className="t-mono link" href={WALRUSCAN_BLOB(blobId)} target="_blank" rel="noreferrer" title={blobId}>
+    <a className="t-mono inline-flex items-center gap-1 text-[0.8rem] text-violet hover:underline" href={WALRUSCAN_BLOB(blobId)} target="_blank" rel="noreferrer" title={`Open ${blobId} on Walruscan`}>
       {shortBlob(blobId)}
+      <ExternalLink className="size-3 opacity-70" aria-hidden="true" />
     </a>
   );
 }
 
-/** A ticket stub showing one memory's journey to Walrus. */
-export function Receipt({ stored, mock, onRetry }: { stored: StoredMemory; mock?: boolean; onRetry?: () => void }) {
+export function StatusDot({ status }: { status: StoredMemory["status"] }) {
+  const cls = status === "stored" ? "bg-violet" : status === "failed" ? "bg-rose" : "bg-amber animate-pulse-soft";
+  return <span className={`dot ${cls}`} aria-hidden="true" />;
+}
+
+/** One memory's journey to Walrus: writing → kept, with its blob. */
+export function Receipt({ stored, mock }: { stored: StoredMemory; mock?: boolean }) {
   const { status } = stored;
   return (
-    <div className="stub flex items-stretch text-sm animate-rise" role="status" aria-live="polite">
-      <div className="flex min-w-0 flex-1 items-center gap-3 py-3 pr-3 pl-5">
-        <StatusDot status={status} />
-        <div className="min-w-0">
-          <p className="font-medium text-ink">
-            {status === "pending" && "Writing to Walrus…"}
-            {status === "stored" && (mock ? "Kept in the mock store" : "Kept on Walrus Mainnet")}
-            {status === "failed" && "Couldn't store this memory"}
-          </p>
-          <p className="truncate text-[0.8125rem] text-ink-2">{summarize(stored.memory)}</p>
-        </div>
+    <div className="flex items-center gap-3 rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[0.8125rem] animate-rise" role="status" aria-live="polite">
+      <StatusDot status={status} />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-fg">
+          {status === "pending" && "Writing to Walrus…"}
+          {status === "stored" && (mock ? "Kept in the mock store" : "Kept on Walrus Mainnet")}
+          {status === "failed" && "Couldn't store this memory"}
+        </p>
+        <p className="truncate text-fg-3">{summarize(stored.memory)}</p>
       </div>
-      <div className="perforation flex shrink-0 items-center gap-1 py-3 pr-5 pl-4 text-[0.8125rem]">
+      <div className="shrink-0">
         {status === "stored" && stored.blobId ? (
-          <>
-            <span className="text-ink-3">blob</span> <BlobLink blobId={stored.blobId} mock={mock} />
-          </>
+          <BlobLink blobId={stored.blobId} mock={mock} />
         ) : status === "failed" ? (
-          onRetry ? (
-            <button type="button" className="link" onClick={onRetry}>
-              Retry
-            </button>
-          ) : (
-            <span className="text-claret">{stored.error ?? "failed"}</span>
-          )
+          <span className="text-rose">{stored.error ?? "failed"}</span>
         ) : (
-          <span className="text-ink-3">{stored.jobId ? "job accepted" : "sending"}</span>
+          <span className="text-fg-3">{stored.jobId ? "job accepted" : "sending"}</span>
         )}
       </div>
     </div>
   );
-}
-
-export function StatusDot({ status }: { status: StoredMemory["status"] }) {
-  const cls = status === "stored" ? "bg-moss" : status === "failed" ? "bg-claret" : "bg-amber animate-pulse-soft";
-  return <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${cls}`} aria-hidden="true" />;
 }

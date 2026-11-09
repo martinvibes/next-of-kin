@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, HeartPulse, KeyRound, Lock, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 import { createVault, encryptField, passphraseStrength } from "@/domain/crypto";
 import { newId } from "@/domain/ids";
 import { detectSecret, SECRET_MESSAGE } from "@/domain/seedGuard";
@@ -8,13 +9,18 @@ import { graceFor, INTERVAL_PRESETS, type ProfileMemory, type VaultMemory } from
 import { formatInterval } from "@/domain/format";
 import type { StateResponse, StatusResponse, WriteResponse } from "@/lib/api-types";
 import { api, ApiFailure, getOwnerSecret, setOwnerSecret } from "@/lib/client";
-import { Seal } from "@/components/Seal";
+import { AuthLayout } from "@/components/ui/AuthLayout";
+import { LogoMark } from "@/components/ui/Logo";
 import { ModeBanner } from "@/components/ModeBanner";
-import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { Dashboard } from "@/components/owner/Dashboard";
 
 type Step = 0 | 1 | 2 | 3;
-const STEPS = ["Owner key", "Names", "Passphrase", "Check-ins"] as const;
+const STEPS: { title: string; sub: string; icon: LucideIcon }[] = [
+  { title: "Owner key", sub: "Prove this deployment is yours", icon: KeyRound },
+  { title: "Names", sub: "Who the letter is for", icon: Users },
+  { title: "Passphrase", sub: "The key your heir will use", icon: Lock },
+  { title: "Check-ins", sub: "How long before it opens", icon: HeartPulse },
+];
 
 export function SetupFlow() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
@@ -31,6 +37,7 @@ export function SetupFlow() {
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<{ key: CryptoKey; status: StatusResponse } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [minStep, setMinStep] = useState(0);
 
   useEffect(() => {
     api<StatusResponse>("/api/status").then(setStatus).catch(() => {});
@@ -39,6 +46,7 @@ export function SetupFlow() {
       api<StateResponse>("/api/state", { secret: s })
         .then(() => {
           setSecret(s);
+          setMinStep(1);
           setStep((x) => (x === 0 ? 1 : x));
         })
         .catch(() => setOwnerSecret(null));
@@ -46,7 +54,7 @@ export function SetupFlow() {
   }, []);
 
   useEffect(() => {
-    headingRef.current?.focus();
+    headingRef.current?.focus({ preventScroll: true });
   }, [step]);
 
   if (done)
@@ -59,15 +67,18 @@ export function SetupFlow() {
 
   if (status?.setup)
     return (
-      <Frame status={status}>
-        <div className="mx-auto max-w-lg py-16 text-center">
-          <h1 className="t-display text-[2.6rem] leading-tight">This vault is already sealed.</h1>
-          <p className="mt-4 text-ink-2">One vault per deployment. Open it with your passphrase to keep going.</p>
-          <a href="/owner" className="btn btn-primary mt-8">
+      <AuthLayout status={status}>
+        <div className="card p-8 text-center animate-rise">
+          <span className="mx-auto grid size-11 place-items-center rounded-xl bg-mint-wash text-mint">
+            <ShieldCheck className="size-5" />
+          </span>
+          <h1 className="mt-5 text-[1.5rem] font-semibold tracking-[-0.03em]">This vault is already sealed</h1>
+          <p className="mt-2 text-[0.875rem] text-fg-2">One vault per deployment. Open it with your passphrase to keep going.</p>
+          <a href="/owner" className="btn btn-primary btn-lg mt-7 w-full">
             Open my vault
           </a>
         </div>
-      </Frame>
+      </AuthLayout>
     );
 
   const strength = passphraseStrength(pass);
@@ -135,99 +146,122 @@ export function SetupFlow() {
   }
 
   const heir = heirName.trim() || "your heir";
+  const canContinue = !(busy || (step === 0 && !secret.trim()) || (step === 1 && (!ownerName.trim() || !heirName.trim() || !heirContact.trim())));
+  const H = "text-[1.45rem] leading-tight font-semibold tracking-[-0.03em] outline-none sm:text-[1.7rem]";
 
   return (
-    <Frame status={status}>
-      <div className="grid items-start gap-12 pt-6 pb-10 md:grid-cols-[0.8fr_1.2fr] md:gap-16">
-        <aside className="hidden flex-col items-center md:flex md:sticky md:top-8" aria-hidden="true">
-          <Seal size={260} value={step * 25 + (busy && step === 3 ? 25 : 0)} tone="brass" label="Setup progress">
-            <span className="t-display t-num text-5xl">{step}/4</span>
-            <span className="mt-1 text-sm text-ink-2">sealed</span>
-          </Seal>
-          <ol className="mt-10 w-full max-w-[16rem] space-y-2.5 text-[0.9375rem]">
-            {STEPS.map((s, i) => (
-              <li key={s} className={`flex items-center gap-3 ${i === step ? "text-ink" : i < step ? "text-ink-2" : "text-ink-3"}`}>
-                <span className={`grid size-6 place-items-center rounded-full text-xs font-semibold ${i < step ? "bg-ink text-sheet" : i === step ? "ring-1 ring-ink" : "ring-1 ring-rule"}`}>{i < step ? "✓" : i + 1}</span>
-                {s}
-              </li>
-            ))}
+    <AuthLayout status={status} wide>
+      <div className="card grid overflow-hidden animate-rise md:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="hidden flex-col border-r border-line bg-bg-2/70 p-6 md:flex" aria-label="Setup steps">
+          <LogoMark size={32} />
+          <p className="mt-5 font-semibold">Set up your vault</p>
+          <p className="text-[0.8125rem] text-fg-3">About two minutes</p>
+          <ol className="relative mt-8 space-y-5">
+            <span className="absolute top-4 bottom-4 left-[15px] w-px bg-line-2" aria-hidden="true" />
+            {STEPS.map((s, i) => {
+              const state = i < step ? "done" : i === step ? "now" : "next";
+              return (
+                <li key={s.title} className="relative flex items-start gap-3" aria-current={state === "now" ? "step" : undefined}>
+                  <span
+                    className={`relative grid size-8 shrink-0 place-items-center rounded-full border transition-colors ${
+                      state === "done" ? "border-mint bg-mint text-mint-ink" : state === "now" ? "border-mint/60 bg-panel text-mint shadow-[0_0_0_4px_rgba(92,233,198,0.1)]" : "border-line-2 bg-panel text-fg-3"
+                    }`}
+                  >
+                    {state === "done" ? <Check className="size-4" /> : <s.icon className="size-3.5" />}
+                  </span>
+                  <span className="pt-0.5">
+                    <span className={`block text-[0.875rem] font-medium ${state === "next" ? "text-fg-3" : "text-fg"}`}>{s.title}</span>
+                    <span className="block text-[0.75rem] text-fg-3">{s.sub}</span>
+                  </span>
+                </li>
+              );
+            })}
           </ol>
+          <p className="mt-auto flex gap-2 pt-10 text-[0.75rem] text-fg-3">
+            <Lock className="mt-0.5 size-3.5 shrink-0 text-mint" aria-hidden="true" />
+            Names, answers and the letter are encrypted in this browser. The server only sees ciphertext.
+          </p>
         </aside>
 
-        <form onSubmit={next} className="sheet p-6 sm:p-10" aria-labelledby="step-title" noValidate>
-          <p className="text-sm text-ink-2 md:hidden">
-            Step {step + 1} of 4 · {STEPS[step]}
-          </p>
+        <form onSubmit={next} className="flex min-h-[460px] flex-col p-6 sm:p-10" aria-labelledby="step-title" noValidate>
+          <div className="mb-6 md:hidden">
+            <p className="text-[0.75rem] text-fg-3">
+              Step {step + 1} of 4 · {STEPS[step].title}
+            </p>
+            <div className="mt-2 flex gap-1" aria-hidden="true">
+              {STEPS.map((_, i) => (
+                <span key={i} className={`h-1 flex-1 rounded-full ${i <= step ? "bg-mint" : "bg-white/[0.08]"}`} />
+              ))}
+            </div>
+          </div>
 
           {step === 0 && (
             <>
-              <h1 id="step-title" ref={headingRef} tabIndex={-1} className="t-display text-[clamp(2rem,4vw,2.7rem)] leading-tight outline-none">
+              <h1 id="step-title" ref={headingRef} tabIndex={-1} className={H}>
                 Prove this deployment is yours
               </h1>
-              <p className="mt-3 text-ink-2">Paste the OWNER_SECRET you set on the server. It&rsquo;s kept for this browser session only.</p>
+              <p className="mt-2 text-[0.9375rem] text-fg-2">Paste the OWNER_SECRET you set on the server. It&rsquo;s kept for this browser session only.</p>
               <label htmlFor="secret" className="label mt-8">
                 Owner key
               </label>
-              <input id="secret" className="field" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} autoFocus />
+              <input id="secret" className="input" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} autoFocus />
             </>
           )}
 
           {step === 1 && (
             <>
-              <h1 id="step-title" ref={headingRef} tabIndex={-1} className="t-display text-[clamp(2rem,4vw,2.7rem)] leading-tight outline-none">
+              <h1 id="step-title" ref={headingRef} tabIndex={-1} className={H}>
                 Who is this letter for?
               </h1>
-              <p className="mt-3 text-ink-2">Names are encrypted in this browser. The server only ever sees ciphertext.</p>
-              <div className="mt-8 grid gap-5 sm:grid-cols-2">
+              <p className="mt-2 text-[0.9375rem] text-fg-2">Names are encrypted in this browser before they&rsquo;re stored.</p>
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="owner-name" className="label">
                     Your name
                   </label>
-                  <input id="owner-name" className="field" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Tomás Reyes" autoComplete="name" maxLength={80} autoFocus />
+                  <input id="owner-name" className="input" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Tomás Reyes" autoComplete="name" maxLength={80} autoFocus />
                 </div>
                 <div>
                   <label htmlFor="heir-name" className="label">
                     Your heir
                   </label>
-                  <input id="heir-name" className="field" value={heirName} onChange={(e) => setHeirName(e.target.value)} placeholder="Ada Reyes" maxLength={80} />
+                  <input id="heir-name" className="input" value={heirName} onChange={(e) => setHeirName(e.target.value)} placeholder="Ada Reyes" maxLength={80} />
                 </div>
               </div>
-              <label htmlFor="heir-contact" className="label mt-5">
+              <label htmlFor="heir-contact" className="label mt-4">
                 How should they be reached?
               </label>
-              <input id="heir-contact" className="field" value={heirContact} onChange={(e) => setHeirContact(e.target.value)} placeholder="ada@example.com, or through our lawyer at Reyes & Hart" maxLength={200} />
+              <input id="heir-contact" className="input" value={heirContact} onChange={(e) => setHeirContact(e.target.value)} placeholder="ada@example.com, or through our lawyer at Reyes & Hart" maxLength={200} />
               <p className="help">Shown to {heir} inside the released letter, so they know who to call.</p>
             </>
           )}
 
           {step === 2 && (
             <>
-              <h1 id="step-title" ref={headingRef} tabIndex={-1} className="t-display text-[clamp(2rem,4vw,2.7rem)] leading-tight outline-none">
+              <h1 id="step-title" ref={headingRef} tabIndex={-1} className={H}>
                 Choose the passphrase {heir} will use
               </h1>
-              <p className="mt-3 text-ink-2">
-                It encrypts everything you write here, and it&rsquo;s the only way to open the letter. Make one up. Never use a wallet&rsquo;s recovery phrase.
-              </p>
+              <p className="mt-2 text-[0.9375rem] text-fg-2">It encrypts everything you write here, and it&rsquo;s the only way to open the letter. Make one up. Never use a wallet&rsquo;s recovery phrase.</p>
               <label htmlFor="pass" className="label mt-8">
                 Passphrase
               </label>
-              <input id="pass" className="field" type="password" autoComplete="new-password" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus aria-describedby="pass-strength" />
+              <input id="pass" className="input" type="password" autoComplete="new-password" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus aria-describedby="pass-strength" />
               <div className="mt-2 flex items-center gap-3" id="pass-strength">
                 <div className="flex flex-1 gap-1" aria-hidden="true">
                   {[0, 1, 2].map((i) => (
-                    <span key={i} className={`h-1 flex-1 rounded-full ${pass && strength.score > i ? (strength.score === 3 ? "bg-moss" : strength.score === 2 ? "bg-brass" : "bg-claret") : "bg-rule-soft"}`} />
+                    <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${pass && strength.score > i ? (strength.score === 3 ? "bg-mint" : strength.score === 2 ? "bg-amber" : "bg-rose") : "bg-white/[0.08]"}`} />
                   ))}
                 </div>
-                <span className="w-48 text-right text-xs text-ink-2">{pass ? (passSecret ? "Looks like a recovery phrase" : strength.label) : "Four ordinary words is plenty"}</span>
+                <span className="w-44 text-right text-[0.72rem] text-fg-3">{pass ? (passSecret ? "Looks like a recovery phrase" : strength.label) : "Four ordinary words is plenty"}</span>
               </div>
-              <label htmlFor="pass2" className="label mt-5">
+              <label htmlFor="pass2" className="label mt-4">
                 Once more
               </label>
-              <input id="pass2" className="field" type="password" autoComplete="new-password" value={pass2} onChange={(e) => setPass2(e.target.value)} aria-invalid={!!pass2 && pass !== pass2} />
-              <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-lg bg-brass-wash px-4 py-3 text-[0.9375rem]">
-                <input type="checkbox" className="mt-1 size-4 accent-[var(--brass)]" checked={wrote} onChange={(e) => setWrote(e.target.checked)} />
+              <input id="pass2" className="input" type="password" autoComplete="new-password" value={pass2} onChange={(e) => setPass2(e.target.value)} aria-invalid={!!pass2 && pass !== pass2} />
+              <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-amber/20 bg-amber-wash px-4 py-3 text-[0.875rem]">
+                <input type="checkbox" className="mt-0.5 size-4 accent-[var(--mint)]" checked={wrote} onChange={(e) => setWrote(e.target.checked)} />
                 <span>
-                  I&rsquo;ve written it down where {heir} will find it, such as with my will. <span className="text-ink-2">Nobody, including us, can recover it.</span>
+                  I&rsquo;ve written it down where {heir} will find it, such as with my will. <span className="text-fg-2">Nobody, including us, can recover it.</span>
                 </span>
               </label>
             </>
@@ -235,58 +269,51 @@ export function SetupFlow() {
 
           {step === 3 && (
             <>
-              <h1 id="step-title" ref={headingRef} tabIndex={-1} className="t-display text-[clamp(2rem,4vw,2.7rem)] leading-tight outline-none">
+              <h1 id="step-title" ref={headingRef} tabIndex={-1} className={H}>
                 How long before {heir} should read it?
               </h1>
-              <p className="mt-3 text-ink-2">If you don&rsquo;t check in, and none of your Sui wallets send a transaction, the letter opens after this long plus a 25% grace period.</p>
-              <fieldset className="mt-8 grid gap-3 sm:grid-cols-2">
+              <p className="mt-2 text-[0.9375rem] text-fg-2">If you don&rsquo;t check in, and none of your Sui wallets send a transaction, the letter opens after this long plus a 25% grace period.</p>
+              <fieldset className="mt-7 grid gap-3 sm:grid-cols-2">
                 <legend className="sr-only">Check-in interval</legend>
-                {INTERVAL_PRESETS.map((p) => (
-                  <label
-                    key={p.sec}
-                    className={`relative cursor-pointer rounded-xl px-5 py-4 transition-shadow ${interval === p.sec ? "bg-sheet shadow-[0_0_0_2px_var(--ink)]" : "bg-sheet-2 shadow-[0_0_0_1px_var(--rule)] hover:shadow-[0_0_0_1px_var(--ink-3)]"}`}
-                  >
-                    <input type="radio" name="interval" className="sr-only" checked={interval === p.sec} onChange={() => setIntervalSec(p.sec)} />
-                    <span className="t-serif block text-[1.2rem]">{p.label}</span>
-                    <span className="mt-0.5 block text-sm text-ink-2">{p.demo ? "Demo: try the whole switch in minutes" : `then ${formatInterval(graceFor(p.sec))} grace`}</span>
-                    {p.demo && <span className="absolute top-3 right-3 rounded bg-amber-wash px-1.5 py-0.5 text-[0.7rem] font-semibold text-amber">demo</span>}
-                  </label>
-                ))}
+                {INTERVAL_PRESETS.map((p) => {
+                  const on = interval === p.sec;
+                  return (
+                    <label key={p.sec} className={`relative cursor-pointer rounded-xl border px-4 py-3.5 transition-colors ${on ? "border-mint/60 bg-mint-wash" : "border-line-2 bg-bg-2 hover:border-white/20"}`}>
+                      <input type="radio" name="interval" className="sr-only" checked={on} onChange={() => setIntervalSec(p.sec)} />
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{p.label}</span>
+                        {p.demo ? <span className="pill pill-amber">demo</span> : on && <Check className="size-4 text-mint" />}
+                      </span>
+                      <span className="mt-0.5 block text-[0.78rem] text-fg-3">{p.demo ? "Try the whole switch in minutes" : `then ${formatInterval(graceFor(p.sec))} grace`}</span>
+                    </label>
+                  );
+                })}
               </fieldset>
             </>
           )}
 
           {err && (
-            <p className="mt-6 rounded-lg bg-claret-wash px-3 py-2 text-sm text-claret" role="alert">
+            <p className="mt-5 rounded-lg border border-rose/20 bg-rose-wash px-3 py-2 text-[0.8125rem] text-rose" role="alert">
               {err}
             </p>
           )}
 
-          <div className="mt-10 flex items-center gap-3">
-            <button className="btn btn-primary" disabled={busy || (step === 0 && !secret.trim()) || (step === 1 && (!ownerName.trim() || !heirName.trim() || !heirContact.trim()))}>
-              {busy ? (step === 3 ? "Sealing on Walrus…" : "Checking…") : step === 3 ? "Seal the vault" : "Continue"}
-            </button>
-            {step > (getOwnerSecret() ? 1 : 0) && (
-              <button type="button" className="btn btn-quiet" onClick={() => setStep((s) => (s - 1) as Step)} disabled={busy}>
-                Back
+          <div className="mt-auto flex items-center justify-between gap-3 pt-10">
+            {step > minStep ? (
+              <button type="button" className="btn btn-ghost" onClick={() => setStep((s) => (s - 1) as Step)} disabled={busy}>
+                <ArrowLeft /> Back
               </button>
+            ) : (
+              <span />
             )}
+            <button className="btn btn-primary btn-lg" disabled={!canContinue}>
+              {busy ? (step === 3 ? "Sealing the vault…" : "Checking…") : step === 3 ? "Seal the vault" : "Continue"}
+              {!busy && step < 3 && <ArrowRight />}
+              {!busy && step === 3 && <Lock />}
+            </button>
           </div>
         </form>
       </div>
-    </Frame>
-  );
-}
-
-function Frame({ status, children }: { status: StatusResponse | null; children: React.ReactNode }) {
-  return (
-    <>
-      <ModeBanner status={status} />
-      <SiteHeader current="setup" />
-      <main id="main" className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        {children}
-      </main>
-      <SiteFooter />
-    </>
+    </AuthLayout>
   );
 }

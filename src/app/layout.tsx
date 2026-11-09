@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Instrument_Sans, Libre_Caslon_Display, Libre_Caslon_Text, Mrs_Saint_Delafield } from "next/font/google";
+import { Geist, Geist_Mono, Libre_Caslon_Text, Mrs_Saint_Delafield } from "next/font/google";
 import "./globals.css";
 
-const caslonDisplay = Libre_Caslon_Display({ weight: "400", subsets: ["latin"], variable: "--font-caslon-display", display: "swap" });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 const caslonText = Libre_Caslon_Text({ weight: ["400", "700"], style: ["normal", "italic"], subsets: ["latin"], variable: "--font-caslon-text", display: "swap" });
-const instrument = Instrument_Sans({ subsets: ["latin"], variable: "--font-instrument", display: "swap", axes: ["wdth"] });
-const plexMono = IBM_Plex_Mono({ weight: ["400", "500"], subsets: ["latin"], variable: "--font-plex-mono", display: "swap" });
 const signature = Mrs_Saint_Delafield({ weight: "400", subsets: ["latin"], variable: "--font-signature", display: "swap" });
 
 export const metadata: Metadata = {
@@ -20,14 +19,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#e8e6e0",
+  themeColor: "#07080a",
+  colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${caslonDisplay.variable} ${caslonText.variable} ${instrument.variable} ${plexMono.variable} ${signature.variable}`}>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable} ${caslonText.variable} ${signature.variable}`}>
       <body className="min-h-dvh">{children}</body>
     </html>
   );

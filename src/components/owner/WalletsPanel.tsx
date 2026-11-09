@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { AlertTriangle, Plus, Wallet } from "lucide-react";
+import { formatUsd, relativeTime } from "@/domain/format";
 import { shortAddress, walletIdOf } from "@/domain/ids";
 import { detectSecret, SECRET_MESSAGE } from "@/domain/seedGuard";
 import type { Chain, WalletMemory } from "@/domain/types";
 import { ApiFailure } from "@/lib/client";
+import { CopyButton } from "@/components/Receipt";
 import type { OwnerCtx } from "./useOwner";
 
 const ADDRESS: Record<Chain, RegExp> = {
@@ -62,7 +65,7 @@ export function WalletForm({ o, className = "", onDone }: { o: OwnerCtx; classNa
 
   return (
     <form onSubmit={submit} className={className} aria-label="Add a wallet">
-      <div role="radiogroup" aria-label="Chain" className="inline-flex rounded-full bg-sheet-2 p-1 text-sm">
+      <div role="radiogroup" aria-label="Chain" className="inline-flex rounded-lg border border-line bg-bg-2 p-0.5 text-[0.8125rem]">
         {(["sui", "ethereum"] as const).map((c) => (
           <button
             key={c}
@@ -70,7 +73,7 @@ export function WalletForm({ o, className = "", onDone }: { o: OwnerCtx; classNa
             role="radio"
             aria-checked={chain === c}
             onClick={() => setChain(c)}
-            className={`rounded-full px-4 py-1.5 font-medium transition-colors ${chain === c ? "bg-ink text-sheet" : "text-ink-2 hover:text-ink"}`}
+            className={`rounded-md px-3.5 py-1.5 font-medium transition-colors ${chain === c ? "bg-panel-3 text-fg shadow-[inset_0_0_0_1px_var(--line-2)]" : "text-fg-3 hover:text-fg"}`}
           >
             {c === "sui" ? "Sui" : "Ethereum"}
           </button>
@@ -78,13 +81,13 @@ export function WalletForm({ o, className = "", onDone }: { o: OwnerCtx; classNa
       </div>
 
       {suggestions.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-ink-2">From this deployment:</span>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[0.75rem]">
+          <span className="text-fg-3">From this deployment:</span>
           {suggestions.map((s) => (
             <button
               key={s.address}
               type="button"
-              className="t-mono rounded-full border border-rule px-3 py-1 text-xs hover:border-ink"
+              className="t-mono rounded-md border border-line-2 bg-panel-2 px-2 py-1 text-[0.72rem] text-fg-2 hover:border-mint/40 hover:text-fg"
               onClick={() => {
                 setChain(s.chain);
                 setAddress(s.address);
@@ -102,7 +105,7 @@ export function WalletForm({ o, className = "", onDone }: { o: OwnerCtx; classNa
         </label>
         <input
           id="wallet-address"
-          className="field t-mono text-[0.875rem]"
+          className="input t-mono !text-[0.8125rem]"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder={chain === "sui" ? "0x7d20…a3f1" : "0x52a8…19c0"}
@@ -111,86 +114,118 @@ export function WalletForm({ o, className = "", onDone }: { o: OwnerCtx; classNa
           aria-invalid={!!problem || !!dupe}
           aria-describedby="wallet-address-help"
         />
-        <p id="wallet-address-help" className={`help ${problem || dupe ? "text-claret" : ""}`}>
+        <p id="wallet-address-help" className={`help ${problem || dupe ? "!text-rose" : ""}`}>
           {problem ?? (dupe ? "That wallet is already in your vault." : "Only the public address. Never a seed phrase or private key.")}
         </p>
       </div>
-      <div className="mt-4">
+      <div className="mt-3">
         <label htmlFor="wallet-label" className="label">
           What do you call it?
         </label>
-        <input
-          id="wallet-label"
-          className="field"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="e.g. Savings on the Ledger"
-          maxLength={80}
-          aria-invalid={labelSecret}
-        />
-        <p className={`help ${labelSecret ? "text-claret" : ""}`}>{labelSecret ? SECRET_MESSAGE : "Encrypted in this browser before it's stored."}</p>
+        <input id="wallet-label" className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Savings on the Ledger" maxLength={80} aria-invalid={labelSecret} />
+        <p className={`help ${labelSecret ? "!text-rose" : ""}`}>{labelSecret ? SECRET_MESSAGE : "Encrypted in this browser before it's stored."}</p>
       </div>
       {err && (
-        <p className="mt-4 rounded-lg bg-claret-wash px-3 py-2 text-sm text-claret" role="alert">
+        <p className="mt-3 rounded-lg border border-rose/20 bg-rose-wash px-3 py-2 text-[0.8125rem] text-rose" role="alert">
           {err}
         </p>
       )}
-      <button className="btn btn-primary mt-6" disabled={busy || !address.trim() || !!problem || !!dupe || labelSecret}>
+      <button className="btn btn-primary mt-5 w-full sm:w-auto" disabled={busy || !address.trim() || !!problem || !!dupe || labelSecret}>
+        <Plus />
         {busy ? "Reading it through Tatum…" : "Add wallet"}
       </button>
     </form>
   );
 }
 
-export function WalletsPanel({ o }: { o: OwnerCtx }) {
-  const [adding, setAdding] = useState(false);
+export function WalletsView({ o }: { o: OwnerCtx }) {
   const wallets = o.state?.state.wallets ?? [];
   const scans = new Map(o.scan?.scan.wallets.map((w) => [w.walletId, w]) ?? []);
+  const cov = new Map(o.scan?.readiness.perAsset.map((c) => [c.assetKey, c]) ?? []);
+  const now = new Date().toISOString();
 
   return (
-    <section className="sheet flex flex-col p-6 sm:p-7" aria-labelledby="wallets-title">
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 id="wallets-title" className="t-serif text-[1.35rem]">
-          Wallets
-        </h2>
-        {wallets.length > 0 && !adding && (
-          <button type="button" className="link text-sm" onClick={() => setAdding(true)}>
-            Add another
-          </button>
+    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="min-w-0">
+        {!o.state ? (
+          <div className="grid grid-cols-1 gap-4">
+            {[0, 1].map((i) => (
+              <div key={i} className="skeleton h-44 rounded-2xl" />
+            ))}
+          </div>
+        ) : wallets.length === 0 ? (
+          <div className="card grid place-items-center px-6 py-14 text-center">
+            <span className="grid size-12 place-items-center rounded-2xl bg-white/[0.04] text-fg-3">
+              <Wallet className="size-5" />
+            </span>
+            <p className="mt-4 font-medium">No wallets yet</p>
+            <p className="mt-1 max-w-sm text-[0.8125rem] text-fg-3">Add a public address on the right. The agent reads it through Tatum and starts asking.</p>
+          </div>
+        ) : (
+          <ul className="grid grid-cols-1 gap-4">
+            {wallets.map((w) => {
+              const s = scans.get(w.walletId);
+              const assets = s?.assets ?? [];
+              const total = assets.reduce((t, a) => t + (a.usd ?? 0), 0);
+              const covered = assets.reduce((t, a) => t + (cov.get(a.key)?.covered ? (a.usd ?? 0) : 0), 0);
+              const pct = total > 0 ? Math.round((covered / total) * 100) : assets.length ? Math.round((assets.filter((a) => cov.get(a.key)?.covered).length / assets.length) * 100) : 0;
+              return (
+                <li key={w.walletId} className="card flex flex-col p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-[0.7rem] font-bold ${w.chain === "sui" ? "bg-sky-wash text-sky" : "bg-violet-wash text-violet"}`}>{w.chain === "sui" ? "SUI" : "ETH"}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{o.dec?.labels[w.walletId] || "Wallet"}</span>
+                        <span className="block text-[0.72rem] text-fg-3">{w.chain === "sui" ? "Sui Mainnet" : "Ethereum Mainnet"}</span>
+                      </span>
+                    </span>
+                    {s?.error ? (
+                      <span className="pill pill-amber">
+                        <AlertTriangle /> Unreadable
+                      </span>
+                    ) : (
+                      <span className={`pill t-num ${pct >= 100 ? "pill-mint" : "pill-muted"}`}>{s ? `${pct}% covered` : "…"}</span>
+                    )}
+                  </div>
+                  <div className="mt-4 flex items-center gap-1 rounded-lg border border-line bg-bg-2 py-1 pr-1 pl-3">
+                    <span className="t-mono min-w-0 flex-1 truncate text-[0.75rem] text-fg-2" title={w.address}>
+                      {w.address}
+                    </span>
+                    <CopyButton value={w.address} label="Copy address" />
+                  </div>
+                  <dl className="mt-4 grid grid-cols-3 gap-2 text-[0.75rem]">
+                    <div>
+                      <dt className="text-fg-3">Assets</dt>
+                      <dd className="t-num mt-0.5 text-[0.9375rem] font-semibold">{s ? assets.length : "…"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-fg-3">Value</dt>
+                      <dd className="t-num mt-0.5 text-[0.9375rem] font-semibold">{s ? (total > 0 ? formatUsd(total) : "—") : "…"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-fg-3">Last sent</dt>
+                      <dd className="mt-0.5 text-[0.8125rem] font-medium">{s?.lastOutgoingTx ? relativeTime(s.lastOutgoingTx, now) : w.chain === "sui" ? "None seen" : "—"}</dd>
+                    </div>
+                  </dl>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
-      <p className="mt-1 text-sm text-ink-2">Public addresses only. Tatum reads them; nothing here can move funds.</p>
 
-      {wallets.length > 0 && (
-        <ul className="mt-5 divide-y divide-rule-soft border-y border-rule-soft">
-          {wallets.map((w) => {
-            const s = scans.get(w.walletId);
-            const n = s?.assets.length ?? 0;
-            return (
-              <li key={w.walletId} className="flex items-center justify-between gap-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{o.dec?.labels[w.walletId] || "Wallet"}</p>
-                  <p className="t-mono text-xs text-ink-3">
-                    {w.chain === "sui" ? "Sui" : "Ethereum"} · {shortAddress(w.address)}
-                  </p>
-                </div>
-                <p className="shrink-0 text-sm text-ink-2">{s?.error ? <span className="text-amber">unreadable</span> : s ? `${n} ${n === 1 ? "asset" : "assets"}` : "…"}</p>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {wallets.length === 0 && !adding && <p className="mt-5 text-sm text-ink-2">Your first wallet goes in the card at the top of the page.</p>}
-
-      {adding && (
-        <div className="mt-5">
-          <WalletForm o={o} onDone={() => setAdding(false)} />
-          <button type="button" className="btn btn-quiet mt-2" onClick={() => setAdding(false)}>
-            Cancel
-          </button>
+      <aside className="card overflow-hidden lg:sticky lg:top-24" aria-labelledby="add-wallet-title">
+        <div className="card-head">
+          <h2 id="add-wallet-title" className="card-title">
+            <Plus className="size-4" aria-hidden="true" />
+            Add a wallet
+          </h2>
         </div>
-      )}
-    </section>
+        <div className="p-5">
+          <p className="mb-4 text-[0.8125rem] text-fg-2">Public addresses only. Tatum reads them; nothing here can move funds.</p>
+          <WalletForm o={o} />
+        </div>
+      </aside>
+    </div>
   );
 }

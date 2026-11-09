@@ -1,153 +1,142 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
-import { Seal } from "@/components/Seal";
-import { formatUsd } from "@/domain/format";
+import { useCallback, useEffect, useState } from "react";
+import { TrendingDown, TrendingUp, X } from "lucide-react";
 import type { StatusResponse } from "@/lib/api-types";
-import { setOwnerSecret } from "@/lib/client";
+import { ApiFailure, setOwnerSecret } from "@/lib/client";
+import { countdown, useNow } from "@/lib/time";
 import { useOwner, type OwnerCtx } from "./useOwner";
-import { QuestionArea } from "./QuestionArea";
-import { SwitchCard } from "./SwitchCard";
-import { ReadinessChart } from "./ReadinessChart";
-import { Ledger } from "./Ledger";
-import { WalletsPanel } from "./WalletsPanel";
-import { LetterPanel } from "./LetterPanel";
+import { CheckinButton, Shell, viewFromHash, type View } from "./Shell";
+import { Overview } from "./Overview";
+import { AgentView } from "./QuestionArea";
+import { AssetsTable } from "./Ledger";
+import { WalletsView } from "./WalletsPanel";
+import { LetterView } from "./LetterPanel";
+import { MemoryView } from "./MemoryFeed";
+
+export interface Checkin {
+  busy: boolean;
+  done: boolean;
+  run: () => void;
+  left: string | null;
+  leftMs: number | null;
+}
+
+function useCheckin(o: OwnerCtx): Checkin {
+  const sw = o.state?.switch ?? null;
+  const now = useNow();
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const target = sw?.phase === "alive" ? sw.dueAt : sw?.phase === "overdue" ? sw.releaseAt : null;
+  const leftMs = target ? new Date(target).getTime() - now : null;
+
+  // When a boundary passes, ask the server for the new phase.
+  const crossed = leftMs !== null && leftMs <= 0;
+  useEffect(() => {
+    if (crossed) o.loadState().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crossed]);
+
+  const run = useCallback(async () => {
+    setBusy(true);
+    try {
+      await o.checkin();
+      setDone(true);
+      setTimeout(() => setDone(false), 2600);
+    } catch (e) {
+      o.setError(e instanceof ApiFailure ? e.message : "Check-in failed.");
+    } finally {
+      setBusy(false);
+    }
+  }, [o]);
+
+  return { busy, done, run, leftMs, left: leftMs !== null ? countdown(leftMs) : null };
+}
 
 export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey; status: StatusResponse; onLock: () => void }) {
   const o = useOwner(cryptoKey, status);
-  return (
-    <>
-      <SiteHeader
-        current="owner"
-        right={
-          <button
-            type="button"
-            className="rounded-full px-2.5 py-1.5 text-ink-2 hover:text-ink sm:ml-1 sm:px-3"
-            onClick={() => {
-              setOwnerSecret(null);
-              onLock();
-            }}
-          >
-            Lock
-          </button>
-        }
-      />
-      <main id="main" className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        {o.error && (
-          <p className="mb-6 flex items-center justify-between gap-4 rounded-lg bg-claret-wash px-4 py-3 text-sm text-claret" role="alert">
-            {o.error}
-            <button type="button" className="link shrink-0" onClick={() => o.setError(null)}>
-              Dismiss
-            </button>
-          </p>
-        )}
-
-        <section className="grid items-start gap-10 pt-4 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14" aria-label="Readiness and next question">
-          <ReadinessPanel o={o} />
-          <QuestionArea o={o} />
-        </section>
-
-        <section className="mt-20 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]" aria-label="Switch and history">
-          <SwitchCard o={o} />
-          <ReadinessChart snapshots={o.scan?.snapshots ?? o.state?.state.snapshots ?? []} />
-        </section>
-
-        <Ledger o={o} />
-
-        <section className="mt-20 grid items-start gap-6 lg:grid-cols-2" aria-label="Wallets and letter">
-          <WalletsPanel o={o} />
-          <LetterPanel o={o} />
-        </section>
-      </main>
-      <SiteFooter />
-    </>
-  );
-}
-
-function ReadinessPanel({ o }: { o: OwnerCtx }) {
-  const r = o.scan?.readiness;
-  const score = r?.score ?? 0;
-  const [flash, setFlash] = useState<number | null>(null);
+  const ci = useCheckin(o);
+  const [view, setView] = useState<View>("overview");
 
   useEffect(() => {
-    if (!o.lastGain) return;
-    setFlash(o.lastGain.delta);
-    const t = setTimeout(() => setFlash(null), 3600);
-    return () => clearTimeout(t);
-  }, [o.lastGain]);
+    setView(viewFromHash());
+    const onHash = () => setView(viewFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
-  const remaining = o.scan?.questions.length ?? 0;
+  const go = useCallback((v: View) => {
+    window.history.replaceState(null, "", v === "overview" ? window.location.pathname : `#${v}`);
+    setView(v);
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  const sw = o.state?.switch ?? null;
+  const counts = {
+    agent: o.scan?.questions.length ?? 0,
+    wallets: o.state?.state.wallets.length ?? 0,
+    memory: o.state?.state.counts.total ?? 0,
+  };
+
   return (
-    <div className="flex flex-col items-center text-center lg:sticky lg:top-6">
-      <div className="relative">
-        <Seal size={300} value={r ? score : 0} tone={score >= 90 ? "moss" : "brass"} label={`Heir readiness ${score}%`}>
-          <span className="t-display t-num text-[4.2rem] leading-none" aria-hidden="true">
-            {r ? score : "—"}
-            <span className="text-[1.8rem] align-top">%</span>
-          </span>
-          <span className="mt-2 text-sm text-ink-2">heir readiness</span>
-        </Seal>
-        {flash !== null && (
-          <span
-            className={`absolute top-6 -right-2 rounded-full px-3 py-1 text-sm font-semibold shadow-[var(--shadow-lift)] animate-rise ${flash >= 0 ? "bg-moss text-white" : "bg-claret text-white"}`}
-            role="status"
-          >
-            {flash >= 0 ? "+" : "−"}
-            {Math.abs(flash)} points
-          </span>
-        )}
+    <Shell
+      view={view}
+      onView={go}
+      status={status}
+      sw={sw}
+      counts={counts}
+      ownerName={o.dec?.ownerName ?? null}
+      onLock={() => {
+        setOwnerSecret(null);
+        onLock();
+      }}
+      topRight={<CheckinButton sw={sw} busy={ci.busy} done={ci.done} onClick={ci.run} left={ci.left} />}
+    >
+      {o.error && (
+        <div className="mb-5 flex items-start justify-between gap-4 rounded-xl border border-rose/25 bg-rose-wash px-4 py-3 text-sm text-rose animate-rise" role="alert">
+          <p>{o.error}</p>
+          <button type="button" className="shrink-0 opacity-80 hover:opacity-100" onClick={() => o.setError(null)} aria-label="Dismiss">
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
+      <div key={view} className="animate-rise">
+        {view === "overview" && <Overview o={o} go={go} ci={ci} />}
+        {view === "agent" && <AgentView o={o} />}
+        {view === "assets" && <AssetsTable o={o} />}
+        {view === "wallets" && <WalletsView o={o} />}
+        {view === "letter" && <LetterView o={o} />}
+        {view === "memory" && <MemoryView o={o} />}
       </div>
 
-      {r ? (
-        <p className="t-serif mt-6 max-w-sm text-[1.15rem] leading-snug text-balance">
-          {r.basis === "usd" ? (
-            <>
-              Your heir could recover <strong className="font-bold">{formatUsd(r.coveredUsd)}</strong> of {formatUsd(r.totalUsd)} today.
-            </>
-          ) : r.assets === 0 ? (
-            <>Add a wallet and your heir&rsquo;s readiness starts counting.</>
-          ) : (
-            <>
-              {r.covered} of {r.assets} assets are covered.
-            </>
-          )}
-        </p>
-      ) : (
-        <p className="mt-6 text-ink-2 animate-pulse-soft">Reading your wallets through Tatum…</p>
-      )}
-      {r && remaining > 0 && (
-        <p className="mt-2 text-sm text-ink-2">
-          {remaining} {remaining === 1 ? "question" : "questions"} left. The most valuable one is first.
-        </p>
-      )}
-      <Formula />
-    </div>
+      <GainToast o={o} />
+    </Shell>
   );
 }
 
-function Formula() {
+/** A small toast whenever readiness moves, so every answer visibly pays off. */
+function GainToast({ o }: { o: OwnerCtx }) {
+  const [shown, setShown] = useState<{ delta: number; score: number } | null>(null);
+  useEffect(() => {
+    if (!o.lastGain || !o.scan) return;
+    setShown({ delta: o.lastGain.delta, score: o.scan.readiness.score });
+    const t = setTimeout(() => setShown(null), 3800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [o.lastGain]);
+  if (!shown) return null;
+  const up = shown.delta >= 0;
   return (
-    <details className="group mt-6 w-full max-w-sm rounded-lg text-left text-sm open:bg-sheet open:shadow-[0_0_0_1px_var(--rule)]">
-      <summary className="cursor-pointer list-none rounded-lg px-4 py-2.5 text-center text-ink-2 hover:text-ink group-open:text-ink [&::-webkit-details-marker]:hidden">
-        How is this calculated?
-      </summary>
-      <div className="space-y-3 px-4 pt-1 pb-4 text-ink-2">
-        <p>An asset is covered when your heir would know all three, and it hasn&rsquo;t drifted:</p>
-        <ul className="space-y-1.5">
-          <li>
-            <strong className="text-ink">Where</strong> the key is: a note on its wallet.
-          </li>
-          <li>
-            <strong className="text-ink">How</strong> to open it: a note on the asset, or on its wallet if the asset is liquid. Staked SUI needs its own.
-          </li>
-          <li>
-            <strong className="text-ink">Who</strong> receives it: a note on the asset or its wallet.
-          </li>
-        </ul>
-        <p className="rounded-md bg-sheet-2 px-3 py-2 text-ink">Readiness = covered USD ÷ total USD × 100</p>
-        <p>With no prices, it counts assets instead. If a balance falls below 75% or rises above 133% of what it was when you answered, that asset stops counting until you confirm the change.</p>
+    <div className="no-print fixed right-4 bottom-4 z-50 flex items-center gap-3 rounded-xl border border-line-2 bg-panel-2 px-4 py-3 shadow-[var(--shadow-pop)] animate-rise sm:right-6 sm:bottom-6" role="status">
+      <span className={`grid size-8 place-items-center rounded-lg ${up ? "bg-mint-wash text-mint" : "bg-amber-wash text-amber"}`}>{up ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}</span>
+      <div>
+        <p className="text-sm font-semibold">
+          Readiness {up ? "+" : "−"}
+          {Math.abs(shown.delta)} points
+        </p>
+        <p className="text-[0.75rem] text-fg-3">Now {shown.score}%. Saved as a snapshot memory.</p>
       </div>
-    </details>
+    </div>
   );
 }

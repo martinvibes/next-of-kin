@@ -179,7 +179,7 @@ CI runs all of these plus a production build on every push.
 src/domain/    pure, deterministic logic shared by browser and server (fully unit-tested)
 src/server/    Walrus Memory client and store, Tatum queue and scanners, env, API helpers
 src/app/api/   typed route handlers
-src/components/ owner dashboard, setup, heir view, proof page, the seal
+src/components/ owner dashboard, setup, heir view, proof page, landing
 ```
 
 ## What's next

@@ -1,33 +1,38 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LineChart, Table2 } from "lucide-react";
 import type { SnapshotMemory } from "@/domain/types";
 import { formatUsd } from "@/domain/format";
 
-const H = 220;
-const PAD = { top: 16, right: 16, bottom: 30, left: 38 };
+/** Minimum plot height; the chart grows to fill its grid row. */
+const H = 210;
+const PAD = { top: 14, right: 12, bottom: 28, left: 36 };
 
 function fmtDate(iso: string, withTime: boolean) {
   const d = new Date(iso);
-  return withTime
-    ? d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return withTime ? d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 /**
- * Readiness over time. One series, so no legend: the heading names it.
- * Readiness only changes when a memory is written, so it's drawn as steps.
+ * Readiness over time, built only from snapshot memories. One series, so the
+ * title names it and there's no legend. Readiness changes only when a memory
+ * is written, so it's drawn as steps.
  */
 export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(300);
+  const [h, setH] = useState(H);
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
 
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.max(260, Math.round(e.contentRect.width))));
+    const ro = new ResizeObserver(([e]) => {
+      setW(Math.max(240, Math.round(e.contentRect.width)));
+      setH(Math.max(H, Math.round(e.contentRect.height)));
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -40,16 +45,18 @@ export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
     const t0 = new Date(pts[0].ts).getTime();
     const t1 = Math.max(new Date(pts[pts.length - 1].ts).getTime(), t0 + 60_000);
     const iw = w - PAD.left - PAD.right;
-    const ih = H - PAD.top - PAD.bottom;
+    const ih = h - PAD.top - PAD.bottom;
     const x = (t: number) => PAD.left + (pts.length === 1 ? iw / 2 : ((t - t0) / (t1 - t0)) * iw);
     const y = (s: number) => PAD.top + ih - (s / 100) * ih;
     const xy = pts.map((p) => ({ x: x(new Date(p.ts).getTime()), y: y(p.score), p }));
     let d = `M ${xy[0].x} ${xy[0].y}`;
     for (let i = 1; i < xy.length; i++) d += ` H ${xy[i].x} V ${xy[i].y}`;
-    return { xy, d, y, iw, ih };
-  }, [pts, w]);
+    return { xy, d, y };
+  }, [pts, w, h]);
 
   const active = hover !== null && geo ? geo.xy[hover] : null;
+  const last = pts[pts.length - 1];
+  const first = pts[0];
 
   function onMove(e: React.PointerEvent<SVGRectElement>) {
     if (!geo) return;
@@ -61,43 +68,53 @@ export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
   }
 
   return (
-    <section className="sheet min-w-0 p-6 sm:p-7" aria-labelledby="chart-title">
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 id="chart-title" className="t-serif text-[1.35rem]">
-          Readiness over time
-        </h2>
-        {pts.length > 0 && (
-          <button type="button" className="link text-sm" onClick={() => setTable((t) => !t)} aria-pressed={table}>
-            {table ? "Show chart" : "Show as table"}
-          </button>
-        )}
+    <section className="card flex h-full min-w-0 flex-col overflow-hidden" aria-labelledby="chart-title">
+      <div className="card-head">
+        <div className="min-w-0">
+          <h2 id="chart-title" className="card-title">
+            <LineChart className="size-4" aria-hidden="true" />
+            Readiness over time
+          </h2>
+        </div>
+        <div className="flex items-center gap-3">
+          {last && first && pts.length > 1 && (
+            <span className="t-num hidden text-[0.75rem] text-fg-3 sm:inline">
+              {first.score}% → <span className="font-semibold text-mint">{last.score}%</span>
+            </span>
+          )}
+          {pts.length > 0 && (
+            <button type="button" className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.75rem] text-fg-2 hover:bg-white/5 hover:text-fg" onClick={() => setTable((t) => !t)} aria-pressed={table}>
+              {table ? <LineChart className="size-3.5" /> : <Table2 className="size-3.5" />}
+              {table ? "Chart" : "Table"}
+            </button>
+          )}
+        </div>
       </div>
-      <p className="mt-1 text-sm text-ink-2">Each point is a snapshot kept on Walrus whenever the score moves.</p>
 
-      <div ref={wrap} className="relative mt-5 w-full min-w-0">
+      <div ref={wrap} className="relative w-full min-w-0 flex-1 px-4 pt-4 pb-3" style={{ minHeight: H + 28 }}>
         {!geo ? (
-          <div className="grid h-[180px] place-items-center rounded-lg border border-dashed border-rule text-center text-sm text-ink-2">
-            <p className="max-w-xs px-4">Your first snapshot is written after the first scan. Answer a question and watch the line climb.</p>
+          <div className="grid h-[190px] place-items-center rounded-xl border border-dashed border-line-2 text-center text-[0.8125rem] text-fg-3">
+            <p className="max-w-xs px-4">The first snapshot is written after the first scan. Answer a question and watch the line climb.</p>
           </div>
         ) : table ? (
-          <div className="max-h-[260px] overflow-auto">
-            <table className="w-full text-left text-sm">
+          <div className="max-h-[210px] overflow-auto">
+            <table className="table">
               <caption className="sr-only">Readiness snapshots</caption>
-              <thead className="sticky top-0 bg-sheet text-ink-2">
+              <thead className="sticky top-0 bg-panel">
                 <tr>
-                  <th className="py-2 pr-3 font-medium">When</th>
-                  <th className="py-2 pr-3 text-right font-medium">Score</th>
-                  <th className="py-2 pr-3 text-right font-medium">Covered</th>
-                  <th className="py-2 font-medium">Cause</th>
+                  <th className="!pl-1">When</th>
+                  <th className="text-right">Score</th>
+                  <th className="text-right">Covered</th>
+                  <th>Cause</th>
                 </tr>
               </thead>
               <tbody>
                 {[...pts].reverse().map((p) => (
-                  <tr key={p.id} className="border-t border-rule-soft">
-                    <td className="py-2 pr-3 whitespace-nowrap text-ink-2">{fmtDate(p.ts, true)}</td>
-                    <td className="t-num py-2 pr-3 text-right font-semibold">{p.score}%</td>
-                    <td className="t-num py-2 pr-3 text-right text-ink-2">{p.totalUsd > 0 ? `${formatUsd(p.coveredUsd)} / ${formatUsd(p.totalUsd)}` : `${p.covered}/${p.assets}`}</td>
-                    <td className="py-2 text-ink-2">{p.cause ?? "scan"}</td>
+                  <tr key={p.id}>
+                    <td className="!pl-1 whitespace-nowrap text-fg-2">{fmtDate(p.ts, true)}</td>
+                    <td className="t-num text-right font-semibold">{p.score}%</td>
+                    <td className="t-num text-right whitespace-nowrap text-fg-2">{p.totalUsd > 0 ? `${formatUsd(p.coveredUsd)} / ${formatUsd(p.totalUsd)}` : `${p.covered}/${p.assets}`}</td>
+                    <td className="text-fg-2">{p.cause ?? "scan"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -105,36 +122,42 @@ export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
           </div>
         ) : (
           <>
-            <svg width={w} height={H} className="block overflow-visible" role="img" aria-label={`Readiness over time, now ${pts[pts.length - 1].score}%. ${pts.length} snapshots.`}>
+            <svg width={w} height={h} className="absolute top-4 left-4 block overflow-visible" role="img" aria-label={`Readiness over time, now ${last.score}%. ${pts.length} snapshots.`}>
+              <defs>
+                <linearGradient id="chart-area" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#5ce9c6" stopOpacity="0.22" />
+                  <stop offset="1" stopColor="#5ce9c6" stopOpacity="0" />
+                </linearGradient>
+              </defs>
               {[0, 50, 100].map((v) => (
                 <g key={v}>
-                  <line x1={PAD.left} x2={w - PAD.right} y1={geo.y(v)} y2={geo.y(v)} stroke="var(--rule-soft)" strokeWidth={1} strokeDasharray={v === 0 ? undefined : "2 4"} />
-                  <text x={PAD.left - 8} y={geo.y(v)} dy="0.32em" textAnchor="end" className="fill-ink-3 text-[11px] t-num">
+                  <line x1={PAD.left} x2={w - PAD.right} y1={geo.y(v)} y2={geo.y(v)} stroke="rgba(255,255,255,0.07)" strokeDasharray={v === 0 ? undefined : "2 4"} />
+                  <text x={PAD.left - 8} y={geo.y(v)} dy="0.32em" textAnchor="end" className="t-num fill-fg-3 text-[10.5px]">
                     {v}%
                   </text>
                 </g>
               ))}
-              <text x={pts.length === 1 ? geo.xy[0].x : PAD.left} y={H - 8} textAnchor={pts.length === 1 ? "middle" : "start"} className="fill-ink-3 text-[11px]">
-                {fmtDate(pts[0].ts, sameDay)}
+              <text x={pts.length === 1 ? geo.xy[0].x : PAD.left} y={h - 6} textAnchor={pts.length === 1 ? "middle" : "start"} className="fill-fg-3 text-[10.5px]">
+                {fmtDate(first.ts, sameDay)}
               </text>
               {pts.length > 1 && (
-                <text x={w - PAD.right} y={H - 8} textAnchor="end" className="fill-ink-3 text-[11px]">
-                  {fmtDate(pts[pts.length - 1].ts, sameDay)}
+                <text x={w - PAD.right} y={h - 6} textAnchor="end" className="fill-fg-3 text-[10.5px]">
+                  {fmtDate(last.ts, sameDay)}
                 </text>
               )}
 
-              <path d={`${geo.d} V ${geo.y(0)} H ${geo.xy[0].x} Z`} fill="var(--brass-wash)" opacity={0.7} />
-              <path d={geo.d} fill="none" stroke="var(--brass)" strokeWidth={2} strokeLinejoin="round" />
+              <path d={`${geo.d} V ${geo.y(0)} H ${geo.xy[0].x} Z`} fill="url(#chart-area)" />
+              <path d={geo.d} fill="none" stroke="#5ce9c6" strokeWidth={2} strokeLinejoin="round" />
 
-              {active && <line x1={active.x} x2={active.x} y1={PAD.top} y2={H - PAD.bottom} stroke="var(--ink-3)" strokeWidth={1} strokeDasharray="3 3" />}
+              {active && <line x1={active.x} x2={active.x} y1={PAD.top} y2={h - PAD.bottom} stroke="rgba(255,255,255,0.25)" strokeDasharray="3 3" />}
               {geo.xy.map((q, i) => (
-                <circle key={q.p.id} cx={q.x} cy={q.y} r={hover === i ? 6 : 4} fill="var(--sheet)" stroke="var(--brass)" strokeWidth={2} />
+                <circle key={q.p.id} cx={q.x} cy={q.y} r={hover === i ? 5.5 : 4} fill="#0e1014" stroke="#5ce9c6" strokeWidth={2} />
               ))}
               <rect
                 x={PAD.left - 10}
                 y={0}
-                width={w - PAD.left - PAD.right + 20}
-                height={H}
+                width={Math.max(0, w - PAD.left - PAD.right + 20)}
+                height={h}
                 fill="transparent"
                 onPointerMove={onMove}
                 onPointerLeave={() => setHover(null)}
@@ -143,16 +166,13 @@ export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
             </svg>
             {active && (
               <div
-                className="pointer-events-none absolute z-10 w-max max-w-[220px] rounded-lg bg-ink px-3 py-2 text-[0.8125rem] text-sheet shadow-[var(--shadow-lift)]"
-                style={{
-                  left: Math.min(Math.max(active.x - 110, 0), w - 220),
-                  top: Math.max(active.y - 78, -8),
-                }}
+                className="pointer-events-none absolute z-10 w-max max-w-[220px] rounded-lg border border-line-2 bg-panel-3 px-3 py-2 text-[0.75rem] shadow-[var(--shadow-pop)]"
+                style={{ left: 16 + Math.min(Math.max(active.x - 110, 0), w - 220), top: Math.max(active.y - 70, 0) }}
                 role="status"
               >
-                <p className="t-num text-base font-semibold">{active.p.score}%</p>
-                <p className="opacity-80">{fmtDate(active.p.ts, true)}</p>
-                <p className="mt-0.5 opacity-80">{active.p.cause ?? "scan"}</p>
+                <p className="t-num text-[0.95rem] font-semibold">{active.p.score}%</p>
+                <p className="text-fg-2">{fmtDate(active.p.ts, true)}</p>
+                <p className="mt-0.5 text-fg-3">{active.p.cause ?? "scan"}</p>
               </div>
             )}
           </>
