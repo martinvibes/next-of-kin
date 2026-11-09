@@ -1,97 +1,103 @@
 import Link from "next/link";
-import { ArrowRight, Blocks, Database, Eye, HeartPulse, KeyRound, Lock, MailOpen, MessageSquareText, ShieldCheck, ShieldOff, UserRound, Wrench } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronRight } from "lucide-react";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { StatusBanner } from "@/components/StatusBanner";
-import { HeroPreview } from "@/components/landing/HeroPreview";
+import { Pulse } from "@/components/landing/Pulse";
 import { LiveStats } from "@/components/landing/LiveStats";
+import { HowItWorks } from "@/components/landing/HowItWorks";
+import { Odometer } from "@/components/ui/Odometer";
 
-const UNKNOWNS = [
-  "Which wallets exist, and on which chains.",
-  "That the SUI is staked, and has to be withdrawn first.",
-  "Where the phone or hardware wallet is kept.",
-  "Who you wanted it to go to.",
+const UNKNOWNS = ["Which wallets exist, and on which chains", "That the SUI is staked and has to be withdrawn first", "Where the phone or hardware wallet is kept", "Who it was all meant for"];
+
+const NEVER = [
+  { t: "Ask for your recovery phrase", b: "It only needs public addresses. If a phrase or private key is ever pasted in, it's refused in your browser and again on the server." },
+  { t: "Read your answers", b: "Everything you write is encrypted in your browser with your passphrase before it's sent. The server stores ciphertext." },
+  { t: "Move your money", b: "It reads public balances through Tatum. It has no keys, so it can't sign anything." },
+  { t: "Open early", b: "Your heir sees nothing until you've missed a check-in, the grace period has run out, and your wallets have gone quiet on-chain." },
 ];
 
-const STEPS = [
+const FAQ = [
   {
-    icon: Eye,
-    tone: "bg-sky-wash text-sky",
-    title: "It watches",
-    body: "Add the wallets you want covered. Next of Kin reads balances and stakes on Sui (and Ethereum) through Tatum, so it knows what there is to lose.",
+    q: "Do I have to give you my recovery phrase?",
+    a: "No, and you can't. Next of Kin only ever asks for public wallet addresses. Your answers describe where things are (“the sheet is in the fireproof box”), never the secret itself. If something that looks like a recovery phrase or private key is pasted in, it's refused.",
   },
   {
-    icon: MessageSquareText,
-    tone: "bg-mint-wash text-mint",
-    title: "It asks",
-    body: "One question at a time, starting with the one that protects the most money. Where is the key? How is it opened? Who should get it?",
+    q: "What does my heir need to open it?",
+    a: "Two things: the link to this app and the passphrase you chose at setup. Tell them where to find the passphrase, the same way you'd tell them where your will is.",
   },
   {
-    icon: MailOpen,
-    tone: "bg-violet-wash text-violet",
-    title: "It hands over",
-    body: "If you stop checking in and your wallets go quiet on-chain, your heir opens a step-by-step recovery guide with the passphrase you left them.",
+    q: "What if I just forget to check in?",
+    a: "A missed check-in starts a grace period, not a release. Any transaction from your wallets also counts as a sign of life, so normal use keeps the vault sealed. In this demo the interval is minutes, so you can watch it work.",
   },
-];
-
-const FIELDS = [
-  { icon: KeyRound, tone: "text-mint", name: "Where", q: "Where is the key?", a: "Slush on my phone. The recovery sheet is in the fireproof box." },
-  { icon: Wrench, tone: "text-violet", name: "How", q: "How is it opened?", a: "The phone PIN is with my lawyer. Withdraw the stake first." },
-  { icon: UserRound, tone: "text-sky", name: "Who", q: "Who is it for?", a: "Split equally between my two sisters." },
-];
-
-const PROMISES = [
-  { icon: ShieldOff, title: "We never hold keys", body: "Recovery phrases and private keys are detected and refused, in your browser and again on the server." },
-  { icon: Lock, title: "Encrypted before it leaves you", body: "Every answer is encrypted in your browser with your passphrase. Our server can't read it." },
-  { icon: Database, title: "Kept on Walrus, not with us", body: "Each answer is a memory on Walrus Mainnet. Wipe our server and everything comes back." },
-  { icon: HeartPulse, title: "Opened only if you go quiet", body: "Your heir sees nothing until you stop checking in and your wallets stop moving on-chain." },
+  {
+    q: "Where is my information kept?",
+    a: "As encrypted memories on Walrus Mainnet. If this server were wiped, the whole vault could be rebuilt from Walrus. The Proof page lets you check every memory yourself.",
+  },
+  {
+    q: "Is this legal or financial advice?",
+    a: "No. It's a way to make sure the practical knowledge reaches the right person. It works alongside a will, not instead of one.",
+  },
 ];
 
 export default function Home() {
   return (
-    <div className="aurora relative min-h-dvh overflow-x-clip">
+    <div className="relative min-h-dvh overflow-x-clip">
       <StatusBanner />
       <SiteHeader />
-      <div className="grid-fade pointer-events-none absolute inset-x-0 top-0 h-[640px]" aria-hidden="true" />
-      <main id="main" className="relative">
+      <main id="main">
         {/* Hero */}
-        <section className="mx-auto grid w-full max-w-6xl items-center gap-14 px-4 pt-14 pb-24 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:gap-10 lg:pt-24">
-          <div className="animate-rise">
-            <span className="pill pill-mint">
-              <ShieldCheck className="size-3.5" aria-hidden="true" /> Crypto inheritance, without handing over keys
-            </span>
-            <h1 className="mt-6 text-[clamp(2.5rem,5.5vw,4rem)] leading-[1.04] font-semibold tracking-[-0.045em]">
-              <span className="block">Keys open wallets.</span>
-              <span className="block">Memory finds them.</span>
-            </h1>
-            <p className="mt-6 max-w-[34rem] text-[1.0625rem] leading-relaxed text-fg-2">
-              When someone dies holding crypto, their family may get the keys but rarely the knowledge. Next of Kin watches your wallets, asks you one question at a time, and keeps the
-              answers sealed for the person you choose.
+        <section className="relative">
+          <div className="mx-auto max-w-4xl px-4 pt-14 text-center sm:px-6 sm:pt-20">
+            <h1 className="t-display animate-rise text-[clamp(2.75rem,7vw,5.25rem)] leading-[1.02]">Your crypto shouldn&rsquo;t die with you</h1>
+            <p className="mx-auto mt-6 max-w-[38rem] text-[1.0625rem] leading-relaxed text-fg-2 [animation-delay:80ms] animate-rise sm:text-[1.125rem]">
+              Next of Kin learns what your family would need to know about each wallet, keeps it sealed, and hands it over only if you stop checking in. It never touches your keys.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-3 [animation-delay:160ms] animate-rise">
               <Link href="/owner" className="btn btn-primary btn-lg">
-                Set up my vault <ArrowRight />
+                Set up my vault <ChevronRight />
               </Link>
               <Link href="/heir" className="btn btn-secondary btn-lg">
                 I was left a letter
               </Link>
             </div>
-            <LiveStats />
           </div>
-          <HeroPreview />
+
+          <div className="relative mt-8 pb-20 sm:mt-4">
+            <div className="h-[280px] [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)] sm:h-[320px]">
+              <Pulse />
+            </div>
+            <div className="pointer-events-none absolute inset-x-0 bottom-12 px-4 sm:bottom-14">
+              <div className="pointer-events-auto mx-auto w-fit rounded-2xl bg-bg/85 px-6 py-4 backdrop-blur-[2px]">
+                <LiveStats />
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* The problem */}
-        <section className="border-y border-line bg-bg-2/70" aria-labelledby="problem-title">
-          <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
-            <h2 id="problem-title" className="text-[clamp(1.8rem,3.8vw,2.7rem)] leading-[1.12] font-semibold tracking-[-0.035em] text-balance">
-              Every bank asks for your next of kin. None of them ask what your next of kin will need to know.
-            </h2>
-            <div className="self-end">
-              <p className="text-fg-2">Seed-phrase tools solve the key. Nobody solves the knowledge. Heirs are left guessing:</p>
-              <ul className="mt-5 space-y-2.5">
+        <section className="border-t border-line">
+          <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
+            <p className="max-w-5xl text-[clamp(1.75rem,3.6vw,2.9rem)] leading-[1.18] font-medium tracking-[-0.03em] text-fg-3">
+              Roughly{" "}
+              <span className="text-fg">
+                <Odometer value="20" />%
+              </span>{" "}
+              of all bitcoin is thought to be lost for good. <span className="text-fg">Most of it wasn&rsquo;t stolen.</span> Nobody{" "}
+              <span className="relative whitespace-nowrap">
+                wrote down
+                <svg className="absolute -bottom-2 left-0 h-2.5 w-full" viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0 5 Q 5 0 10 5 T 20 5 T 30 5 T 40 5 T 50 5 T 60 5 T 70 5 T 80 5 T 90 5 T 100 5 T 110 5 T 120 5" fill="none" stroke="#ff5b14" strokeWidth="2.2" vectorEffect="non-scaling-stroke" />
+                </svg>
+              </span>{" "}
+              where the keys were.
+            </p>
+            <p className="mt-6 text-[0.8125rem] text-fg-3">Chainalysis estimate of lost bitcoin, 2020.</p>
+
+            <div className="mt-20">
+              <p className="text-[0.9375rem] text-fg-2">Families are usually left with a laptop and a phone, and none of this:</p>
+              <ul className="mt-6 grid grid-cols-1 border-t border-line sm:grid-cols-2 lg:grid-cols-4">
                 {UNKNOWNS.map((u) => (
-                  <li key={u} className="flex gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-[0.9375rem]">
-                    <span className="mt-[0.5em] size-1.5 shrink-0 rounded-full bg-amber" aria-hidden="true" />
+                  <li key={u} className="border-b border-line py-5 pr-6 text-[1.0625rem] leading-snug tracking-[-0.01em] lg:border-b-0 lg:border-l lg:pl-5 lg:first:border-l-0 lg:first:pl-0">
                     {u}
                   </li>
                 ))}
@@ -101,143 +107,92 @@ export default function Home() {
         </section>
 
         {/* How it works */}
-        <section id="how" className="mx-auto w-full max-w-6xl px-4 pt-24 sm:px-6" aria-labelledby="how-title">
-          <h2 id="how-title" className="text-[clamp(1.8rem,3.6vw,2.5rem)] font-semibold tracking-[-0.035em]">
-            How it works
-          </h2>
-          <p className="mt-3 max-w-xl text-fg-2">Three things happen, in order. You only do the middle one.</p>
-          <ol className="mt-10 grid gap-4 md:grid-cols-3">
-            {STEPS.map((s, i) => (
-              <li key={s.title} className="card relative p-6">
-                <div className="flex items-center justify-between">
-                  <span className={`grid size-11 place-items-center rounded-xl ${s.tone}`}>
-                    <s.icon className="size-5" aria-hidden="true" />
-                  </span>
-                  <span className="t-num text-[0.8125rem] text-fg-3">Step {i + 1}</span>
-                </div>
-                <h3 className="mt-6 text-[1.2rem] font-semibold tracking-[-0.02em]">{s.title}</h3>
-                <p className="mt-2 text-[0.9375rem] leading-relaxed text-fg-2">{s.body}</p>
-              </li>
-            ))}
-          </ol>
+        <section id="how" className="scroll-mt-16 border-t border-line">
+          <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
+            <div className="mb-14 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <h2 className="t-display text-[clamp(2.25rem,4.5vw,3.5rem)] leading-[1.05]">How it works</h2>
+              <p className="max-w-md text-[1.0625rem] leading-relaxed text-fg-2">Ten minutes of plain answers now saves your family months of guessing later.</p>
+            </div>
+            <HowItWorks />
+          </div>
         </section>
 
-        {/* Readiness */}
-        <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-2 lg:gap-16" aria-labelledby="formula-title">
-          <div>
-            <h2 id="formula-title" className="text-[clamp(1.8rem,3.6vw,2.5rem)] leading-[1.12] font-semibold tracking-[-0.035em] text-balance">
-              Readiness is arithmetic, not a feeling
-            </h2>
-            <p className="mt-5 max-w-[32rem] text-fg-2">
-              An asset counts as covered when your heir would know three things: where the key is, how to open it, and who it&rsquo;s for. Your score is the share of your money that&rsquo;s
-              covered.
-            </p>
-            <div className="mt-6 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line-2 bg-panel px-4 py-3 text-[0.9375rem]">
-              <span className="text-fg-3">Readiness</span>
-              <span className="t-mono text-fg">= covered USD ÷ total USD × 100</span>
+        {/* What it never does */}
+        <section className="border-t border-line bg-panel">
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <div>
+              <h2 className="t-display text-[clamp(2.25rem,4.5vw,3.5rem)] leading-[1.05]">What it never does</h2>
+              <p className="mt-5 max-w-sm text-[1.0625rem] leading-relaxed text-fg-2">Holding someone&rsquo;s keys is the problem, not the solution. So it doesn&rsquo;t.</p>
             </div>
-            <p className="mt-6 max-w-[32rem] text-fg-2">
-              Then it checks its memory against the chain. If a balance moves by more than a quarter, that answer stops counting until you confirm it. No language model decides any of
-              this.
-            </p>
-          </div>
-          <ul className="space-y-3" aria-label="The three things your heir needs">
-            {FIELDS.map((f) => (
-              <li key={f.name} className="card flex items-start gap-4 p-5">
-                <span className={`grid size-10 shrink-0 place-items-center rounded-xl bg-white/[0.05] ${f.tone}`}>
-                  <f.icon className="size-[18px]" aria-hidden="true" />
-                </span>
-                <div className="min-w-0">
-                  <p className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="font-semibold">{f.name}</span>
-                    <span className="text-[0.8125rem] text-fg-3">{f.q}</span>
-                  </p>
-                  <p className="mt-1.5 font-serif text-[0.98rem] leading-relaxed text-fg-2">&ldquo;{f.a}&rdquo;</p>
+            <dl className="divide-y divide-line border-y border-line">
+              {NEVER.map((n) => (
+                <div key={n.t} className="grid grid-cols-1 gap-1.5 py-6 sm:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] sm:gap-8">
+                  <dt className="text-[1.0625rem] font-medium tracking-[-0.01em]">{n.t}</dt>
+                  <dd className="text-[0.9375rem] leading-relaxed text-fg-2">{n.b}</dd>
                 </div>
-              </li>
-            ))}
-          </ul>
+              ))}
+            </dl>
+          </div>
         </section>
 
         {/* Built on */}
-        <section className="mx-auto w-full max-w-6xl px-4 sm:px-6" aria-labelledby="built-title">
-          <h2 id="built-title" className="text-[clamp(1.8rem,3.6vw,2.5rem)] font-semibold tracking-[-0.035em]">
-            What it&rsquo;s built on
-          </h2>
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            <article className="card glow-violet p-6 sm:p-7">
-              <span className="grid size-11 place-items-center rounded-xl bg-violet-wash text-violet">
-                <Database className="size-5" aria-hidden="true" />
-              </span>
-              <h3 className="mt-5 text-[1.2rem] font-semibold tracking-[-0.02em]">Walrus Memory is the database</h3>
-              <p className="mt-2 text-[0.9375rem] leading-relaxed text-fg-2">
-                Wallets, answers, confirmations, check-ins and readiness snapshots are each written as a memory on Walrus Mainnet. The server keeps a disposable cache, and can rebuild
-                everything from Walrus in one click.
-              </p>
-              <Link href="/proof" className="link mt-5 inline-flex items-center gap-1.5 text-[0.875rem]">
-                See every memory and its blob <ArrowRight className="size-3.5" />
-              </Link>
-            </article>
-            <article className="card p-6 sm:p-7">
-              <span className="grid size-11 place-items-center rounded-xl bg-sky-wash text-sky">
-                <Blocks className="size-5" aria-hidden="true" />
-              </span>
-              <h3 className="mt-5 text-[1.2rem] font-semibold tracking-[-0.02em]">Tatum reads the chain</h3>
-              <p className="mt-2 text-[0.9375rem] leading-relaxed text-fg-2">
-                Balances, staked SUI and validators, USD prices, and your latest outgoing transaction. That last one doubles as proof of life, so the switch doesn&rsquo;t fire while your
-                wallets are still moving.
-              </p>
-              <Link href="/proof" className="link mt-5 inline-flex items-center gap-1.5 text-[0.875rem]">
-                See the Tatum calls <ArrowRight className="size-3.5" />
-              </Link>
-            </article>
+        <section className="border-t border-line">
+          <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-28">
+            <div className="grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-0">
+              <div className="md:border-r md:border-line md:pr-12">
+                <p className="text-[0.875rem] text-fg-3">Memory</p>
+                <h3 className="t-display mt-3 text-[2rem] leading-tight">Walrus Mainnet</h3>
+                <p className="mt-4 max-w-md text-[1rem] leading-relaxed text-fg-2">Every answer, check-in and readiness change is an encrypted memory on Walrus. The server is a cache. Wipe it and the vault rebuilds from memory.</p>
+              </div>
+              <div className="md:pl-12">
+                <p className="text-[0.875rem] text-fg-3">Chain data</p>
+                <h3 className="t-display mt-3 text-[2rem] leading-tight">Tatum</h3>
+                <p className="mt-4 max-w-md text-[1rem] leading-relaxed text-fg-2">Balances, tokens, stakes and recent transactions on Sui and Ethereum. Read server-side, so the API key never reaches a browser.</p>
+              </div>
+            </div>
+            <Link href="/proof" className="btn btn-secondary mt-14">
+              Check every memory yourself <ArrowUpRight />
+            </Link>
           </div>
         </section>
 
-        {/* Promises */}
-        <section className="mx-auto w-full max-w-6xl px-4 py-24 sm:px-6" aria-label="What we promise">
-          <ul className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-            {PROMISES.map((p) => (
-              <li key={p.title}>
-                <p.icon className="size-5 text-mint" aria-hidden="true" />
-                <p className="mt-4 font-semibold">{p.title}</p>
-                <p className="mt-1.5 text-[0.9375rem] leading-relaxed text-fg-2">{p.body}</p>
-              </li>
-            ))}
-          </ul>
+        {/* FAQ */}
+        <section className="border-t border-line">
+          <div className="mx-auto max-w-3xl px-4 py-24 sm:px-6 sm:py-32">
+            <h2 className="t-display text-center text-[clamp(2.25rem,4.5vw,3.25rem)] leading-[1.05]">Questions people ask</h2>
+            <div className="mt-12 divide-y divide-line border-y border-line">
+              {FAQ.map((f) => (
+                <details key={f.q} className="faq group">
+                  <summary className="flex items-center justify-between gap-6 py-5 text-[1.0625rem] font-medium tracking-[-0.01em]">
+                    {f.q}
+                    <ChevronDown className="faq-chev size-4 shrink-0 text-fg-3 transition-transform duration-300" aria-hidden="true" />
+                  </summary>
+                  <p className="max-w-2xl pb-6 text-[0.9375rem] leading-relaxed text-fg-2">{f.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
         </section>
 
-        {/* Doors */}
-        <section className="mx-auto w-full max-w-6xl px-4 sm:px-6" aria-labelledby="doors-title">
-          <h2 id="doors-title" className="sr-only">
-            Where to go next
-          </h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Door href="/owner" title="I hold the crypto" body="Set up your vault, add wallets and answer the questions that matter most." cta="Set up my vault" primary />
-            <Door href="/heir" title="I was named as next of kin" body="See whether a letter has been released, and open it with the passphrase you were given." cta="Open the heir view" />
-            <Door href="/proof" title="I want to verify it" body="Every memory on Walrus Mainnet, every Tatum call, and a full rebuild from Walrus." cta="See the proof" />
+        {/* Closing */}
+        <section className="bg-[#141311] text-white">
+          <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 pt-24 pb-16 sm:px-6 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="t-display text-[clamp(2.5rem,5vw,4rem)] leading-[1.02]">Leave a way in.</h2>
+              <p className="mt-4 text-[1.0625rem] text-white/60">Setup takes about two minutes. Answer the questions whenever you like.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/owner" className="btn btn-lg bg-white text-[#141311] hover:bg-white/90">
+                Set up my vault <ChevronRight />
+              </Link>
+              <Link href="/heir" className="btn btn-lg border border-white/15 text-white hover:bg-white/5">
+                I was left a letter
+              </Link>
+            </div>
           </div>
         </section>
       </main>
       <SiteFooter />
     </div>
-  );
-}
-
-function Door({ href, title, body, cta, primary }: { href: string; title: string; body: string; cta: string; primary?: boolean }) {
-  return (
-    <Link
-      href={href}
-      className={`group card flex flex-col justify-between p-6 transition-colors hover:border-line-2 ${primary ? "glow-mint border-mint/25 hover:border-mint/40" : ""}`}
-    >
-      <div>
-        <p className="text-[1.2rem] font-semibold tracking-[-0.02em]">{title}</p>
-        <p className="mt-2 text-[0.9375rem] text-fg-2">{body}</p>
-      </div>
-      <p className={`mt-8 inline-flex items-center gap-1.5 text-[0.9375rem] font-medium ${primary ? "text-mint" : "text-fg"}`}>
-        {cta}
-        <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-      </p>
-    </Link>
   );
 }

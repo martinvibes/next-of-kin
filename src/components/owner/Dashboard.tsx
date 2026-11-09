@@ -56,7 +56,7 @@ function useCheckin(o: OwnerCtx): Checkin {
 export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey; status: StatusResponse; onLock: () => void }) {
   const o = useOwner(cryptoKey, status);
   const ci = useCheckin(o);
-  const [view, setView] = useState<View>("overview");
+  const [view, setView] = useState<View>("home");
 
   useEffect(() => {
     setView(viewFromHash());
@@ -66,16 +66,15 @@ export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey;
   }, []);
 
   const go = useCallback((v: View) => {
-    window.history.replaceState(null, "", v === "overview" ? window.location.pathname : `#${v}`);
+    window.history.replaceState(null, "", v === "home" ? window.location.pathname : `#${v}`);
     setView(v);
     window.scrollTo({ top: 0 });
   }, []);
 
   const sw = o.state?.switch ?? null;
   const counts = {
-    agent: o.scan?.questions.length ?? 0,
+    questions: o.scan?.questions.length ?? 0,
     wallets: o.state?.state.wallets.length ?? 0,
-    memory: o.state?.state.counts.total ?? 0,
   };
 
   return (
@@ -83,7 +82,6 @@ export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey;
       view={view}
       onView={go}
       status={status}
-      sw={sw}
       counts={counts}
       ownerName={o.dec?.ownerName ?? null}
       onLock={() => {
@@ -93,7 +91,7 @@ export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey;
       topRight={<CheckinButton sw={sw} busy={ci.busy} done={ci.done} onClick={ci.run} left={ci.left} />}
     >
       {o.error && (
-        <div className="mb-5 flex items-start justify-between gap-4 rounded-xl border border-rose/25 bg-rose-wash px-4 py-3 text-sm text-rose animate-rise" role="alert">
+        <div className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-[#f1d5d0] bg-rose-wash px-4 py-3 text-sm text-rose animate-rise" role="alert">
           <p>{o.error}</p>
           <button type="button" className="shrink-0 opacity-80 hover:opacity-100" onClick={() => o.setError(null)} aria-label="Dismiss">
             <X className="size-4" />
@@ -102,12 +100,16 @@ export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey;
       )}
 
       <div key={view} className="animate-rise">
-        {view === "overview" && <Overview o={o} go={go} ci={ci} />}
-        {view === "agent" && <AgentView o={o} />}
-        {view === "assets" && <AssetsTable o={o} />}
-        {view === "wallets" && <WalletsView o={o} />}
+        {view === "home" && <Overview o={o} go={go} ci={ci} />}
+        {view === "questions" && <AgentView o={o} />}
+        {view === "wallets" && (
+          <div className="space-y-10">
+            <AssetsTable o={o} />
+            <WalletsView o={o} />
+          </div>
+        )}
         {view === "letter" && <LetterView o={o} />}
-        {view === "memory" && <MemoryView o={o} />}
+        {view === "activity" && <MemoryView o={o} />}
       </div>
 
       <GainToast o={o} />
@@ -128,15 +130,15 @@ function GainToast({ o }: { o: OwnerCtx }) {
   if (!shown) return null;
   const up = shown.delta >= 0;
   return (
-    <div className="no-print fixed right-4 bottom-4 z-50 flex items-center gap-3 rounded-xl border border-line-2 bg-panel-2 px-4 py-3 shadow-[var(--shadow-pop)] animate-rise sm:right-6 sm:bottom-6" role="status">
-      <span className={`grid size-8 place-items-center rounded-lg ${up ? "bg-mint-wash text-mint" : "bg-amber-wash text-amber"}`}>{up ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}</span>
-      <div>
-        <p className="text-sm font-semibold">
+    <div className="no-print fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-fg py-2 pr-5 pl-2 text-white shadow-[var(--shadow-pop)] animate-rise" role="status">
+      <span className={`grid size-8 place-items-center rounded-full ${up ? "bg-white/10" : "bg-amber"}`}>{up ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}</span>
+      <p className="text-[0.875rem] whitespace-nowrap">
+        <span className="font-semibold">
           Readiness {up ? "+" : "−"}
-          {Math.abs(shown.delta)} points
-        </p>
-        <p className="text-[0.75rem] text-fg-3">Now {shown.score}%. Saved as a snapshot memory.</p>
-      </div>
+          {Math.abs(shown.delta)}
+        </span>
+        <span className="text-white/60"> · now {shown.score}%, saved to memory</span>
+      </p>
     </div>
   );
 }

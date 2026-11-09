@@ -50,10 +50,10 @@ export function OwnerApp() {
   if (stage.k === "no-setup")
     return (
       <AuthLayout status={stage.status}>
-        <div className="card glow-mint p-8 animate-rise">
+        <div className="card p-8 shadow-[var(--shadow-pop)] animate-rise">
           <LogoMark size={40} />
-          <h1 className="mt-6 text-[1.6rem] leading-tight font-semibold tracking-[-0.03em]">Nothing to hand over yet</h1>
-          <p className="mt-2 text-[0.9375rem] text-fg-2">Set a passphrase, name your heir and choose how often you&rsquo;ll check in. It takes about two minutes.</p>
+          <h1 className="t-display mt-6 text-[2.1rem] leading-[1.08]">Nothing to hand over yet</h1>
+          <p className="mt-2 text-[0.9375rem] text-fg-2">Choose a passphrase, name your heir and pick how often you&rsquo;ll check in. It takes about two minutes.</p>
           <Link href="/setup" className="btn btn-primary btn-lg mt-7 w-full">
             Set up my vault <ArrowRight />
           </Link>
@@ -117,11 +117,11 @@ function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (k
 
   return (
     <AuthLayout status={status}>
-      <form onSubmit={submit} className="card p-7 animate-rise sm:p-8" aria-labelledby="unlock-title">
-        <span className="grid size-11 place-items-center rounded-xl border border-line-2 bg-panel-2 text-mint">
+      <form onSubmit={submit} className="card p-7 shadow-[var(--shadow-pop)] animate-rise sm:p-8" aria-labelledby="unlock-title">
+        <span className="grid size-11 place-items-center rounded-full bg-bg-2 text-fg">
           <Lock className="size-5" />
         </span>
-        <h1 id="unlock-title" className="mt-6 text-[1.6rem] leading-tight font-semibold tracking-[-0.03em]">
+        <h1 id="unlock-title" className="t-display mt-6 text-[2.1rem] leading-[1.08]">
           Open your vault
         </h1>
         <p className="mt-2 text-[0.875rem] text-fg-2">Your answers are decrypted here, in this browser. The passphrase never leaves it.</p>
@@ -159,7 +159,7 @@ function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (k
           </div>
         </div>
         {err && (
-          <p className="mt-4 rounded-lg border border-rose/20 bg-rose-wash px-3 py-2 text-[0.8125rem] text-rose" role="alert">
+          <p className="mt-4 rounded-lg bg-rose-wash px-3 py-2 text-[0.8125rem] text-rose" role="alert">
             {err}
           </p>
         )}
@@ -181,7 +181,7 @@ function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (k
         )}
       </form>
       <p className="mt-5 flex items-center justify-center gap-2 text-center text-[0.75rem] text-fg-3">
-        <ShieldCheck className="size-3.5 text-mint" aria-hidden="true" />
+        <ShieldCheck className="size-3.5 text-ok" aria-hidden="true" />
         {facts.join(" · ")}
       </p>
     </AuthLayout>

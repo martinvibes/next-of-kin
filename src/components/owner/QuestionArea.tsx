@@ -42,7 +42,7 @@ export function AgentPanel({ o, compact, onOpenAgent, queue }: { o: OwnerCtx; co
       onSkip={questions.length > 1 ? () => setIdx((i) => (i + 1) % questions.length) : undefined}
       footer={
         compact && questions.length > 1 && onOpenAgent ? (
-          <button type="button" onClick={onOpenAgent} className="flex w-full items-center justify-between gap-3 border-t border-line px-5 py-3 text-[0.8125rem] text-fg-2 transition-colors hover:bg-white/[0.02] hover:text-fg sm:px-6">
+          <button type="button" onClick={onOpenAgent} className="flex w-full items-center justify-between gap-3 border-t border-line px-5 py-3 text-[0.8125rem] text-fg-2 transition-colors hover:bg-black/[0.04] hover:text-fg sm:px-6">
             <span>
               {questions.length - 1} more {questions.length - 1 === 1 ? "question" : "questions"} in the queue
             </span>
@@ -94,9 +94,9 @@ export function AgentView({ o }: { o: OwnerCtx }) {
                     type="button"
                     onClick={() => queue.setIdx(i)}
                     aria-current={active ? "true" : undefined}
-                    className={`flex w-full items-start gap-3 px-5 py-2.5 text-left transition-colors ${active ? "bg-white/[0.04]" : "hover:bg-white/[0.02]"}`}
+                    className={`flex w-full items-start gap-3 px-5 py-2.5 text-left transition-colors ${active ? "bg-black/[0.04]" : "hover:bg-black/[0.04]"}`}
                   >
-                    <span className={`t-num mt-0.5 grid size-5 shrink-0 place-items-center rounded-md text-[0.68rem] font-semibold ${active ? "bg-mint text-mint-ink" : "bg-white/[0.06] text-fg-3"}`}>{i + 1}</span>
+                    <span className={`t-num mt-0.5 grid size-5 shrink-0 place-items-center rounded-md text-[0.68rem] font-semibold ${active ? "bg-mint text-mint-ink" : "bg-black/[0.04] text-fg-3"}`}>{i + 1}</span>
                     <span className="min-w-0 flex-1">
                       <span className={`line-clamp-2 text-[0.8125rem] leading-snug ${active ? "text-fg" : "text-fg-2"}`}>{renderQuestion(q, { walletLabel: o.dec?.labels[q.walletId] }).title}</span>
                       <span className="mt-1 block">

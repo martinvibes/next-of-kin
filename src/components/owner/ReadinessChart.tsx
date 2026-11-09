@@ -83,7 +83,7 @@ export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
             </span>
           )}
           {pts.length > 0 && (
-            <button type="button" className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.75rem] text-fg-2 hover:bg-white/5 hover:text-fg" onClick={() => setTable((t) => !t)} aria-pressed={table}>
+            <button type="button" className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.75rem] text-fg-2 hover:bg-black/[0.04] hover:text-fg" onClick={() => setTable((t) => !t)} aria-pressed={table}>
               {table ? <LineChart className="size-3.5" /> : <Table2 className="size-3.5" />}
               {table ? "Chart" : "Table"}
             </button>
@@ -125,13 +125,13 @@ export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
             <svg width={w} height={h} className="absolute top-4 left-4 block overflow-visible" role="img" aria-label={`Readiness over time, now ${last.score}%. ${pts.length} snapshots.`}>
               <defs>
                 <linearGradient id="chart-area" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stopColor="#5ce9c6" stopOpacity="0.22" />
-                  <stop offset="1" stopColor="#5ce9c6" stopOpacity="0" />
+                  <stop offset="0" stopColor="#ff5b14" stopOpacity="0.10" />
+                  <stop offset="1" stopColor="#191816" stopOpacity="0" />
                 </linearGradient>
               </defs>
               {[0, 50, 100].map((v) => (
                 <g key={v}>
-                  <line x1={PAD.left} x2={w - PAD.right} y1={geo.y(v)} y2={geo.y(v)} stroke="rgba(255,255,255,0.07)" strokeDasharray={v === 0 ? undefined : "2 4"} />
+                  <line x1={PAD.left} x2={w - PAD.right} y1={geo.y(v)} y2={geo.y(v)} stroke="rgba(25,24,22,0.08)" strokeDasharray={v === 0 ? undefined : "2 4"} />
                   <text x={PAD.left - 8} y={geo.y(v)} dy="0.32em" textAnchor="end" className="t-num fill-fg-3 text-[10.5px]">
                     {v}%
                   </text>
@@ -147,11 +147,11 @@ export function ReadinessChart({ snapshots }: { snapshots: SnapshotMemory[] }) {
               )}
 
               <path d={`${geo.d} V ${geo.y(0)} H ${geo.xy[0].x} Z`} fill="url(#chart-area)" />
-              <path d={geo.d} fill="none" stroke="#5ce9c6" strokeWidth={2} strokeLinejoin="round" />
+              <path d={geo.d} fill="none" stroke="#191816" strokeWidth={2} strokeLinejoin="round" />
 
-              {active && <line x1={active.x} x2={active.x} y1={PAD.top} y2={h - PAD.bottom} stroke="rgba(255,255,255,0.25)" strokeDasharray="3 3" />}
+              {active && <line x1={active.x} x2={active.x} y1={PAD.top} y2={h - PAD.bottom} stroke="rgba(25,24,22,0.22)" strokeDasharray="3 3" />}
               {geo.xy.map((q, i) => (
-                <circle key={q.p.id} cx={q.x} cy={q.y} r={hover === i ? 5.5 : 4} fill="#0e1014" stroke="#5ce9c6" strokeWidth={2} />
+                <circle key={q.p.id} cx={q.x} cy={q.y} r={hover === i ? 5.5 : 4} fill="#0e1014" stroke="#191816" strokeWidth={2} />
               ))}
               <rect
                 x={PAD.left - 10}

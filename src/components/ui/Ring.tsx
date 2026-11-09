@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
- * The readiness gauge: a 270° instrument dial with ticks.
+ * The readiness gauge: a 270° dial with fine ticks, in ink.
  * The arc animates from its previous value, so a gain is visible.
  */
 export function Ring({
@@ -21,7 +21,6 @@ export function Ring({
   label: string;
   children?: React.ReactNode;
 }) {
-  const id = useId().replace(/:/g, "");
   const [shown, setShown] = useState(0);
   useEffect(() => {
     const t = requestAnimationFrame(() => setShown(Math.max(0, Math.min(100, value))));
@@ -34,13 +33,8 @@ export function Ring({
   const len = (2 * Math.PI * r * sweep) / 360;
   const start = 135; // degrees, measured clockwise from +x
   const arc = describeArc(c, c, r, start, start + sweep);
-  const colors: Record<string, [string, string]> = {
-    mint: ["#5ce9c6", "#8af2d8"],
-    amber: ["#f6b956", "#ffd58a"],
-    rose: ["#ff6f86", "#ff9aab"],
-    violet: ["#a99bff", "#c9c0ff"],
-  };
-  const [c0, c1] = colors[tone];
+  const colors: Record<string, string> = { mint: "#191816", amber: "#b4690e", rose: "#c0352c", violet: "#5f5b54" };
+  const c0 = colors[tone];
 
   const ticks = [];
   for (let i = 0; i <= 40; i++) {
@@ -54,8 +48,8 @@ export function Ring({
         y1={round(c + r1 * Math.sin(a))}
         x2={round(c + r2 * Math.cos(a))}
         y2={round(c + r2 * Math.sin(a))}
-        stroke={i / 40 <= shown / 100 ? c0 : "rgba(255,255,255,0.14)"}
-        strokeOpacity={i / 40 <= shown / 100 ? 0.7 : 1}
+        stroke={i / 40 <= shown / 100 ? c0 : "rgba(25,24,22,0.16)"}
+        strokeOpacity={i / 40 <= shown / 100 ? 0.55 : 1}
         strokeWidth={1}
         style={{ transition: "stroke 0.6s" }}
       />,
@@ -65,33 +59,12 @@ export function Ring({
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={label}>
       <svg width={size} height={size} className="absolute inset-0 overflow-visible" aria-hidden="true">
-        <defs>
-          <linearGradient id={`rg-${id}`} x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stopColor={c0} />
-            <stop offset="1" stopColor={c1} />
-          </linearGradient>
-          <filter id={`rf-${id}`} x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="6" />
-          </filter>
-        </defs>
         {ticks}
-        <path d={arc} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} strokeLinecap="round" />
+        <path d={arc} fill="none" stroke="#efede8" strokeWidth={stroke} strokeLinecap="round" />
         <path
           d={arc}
           fill="none"
-          stroke={`url(#rg-${id})`}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={len}
-          strokeDashoffset={len * (1 - shown / 100)}
-          opacity={0.35}
-          filter={`url(#rf-${id})`}
-          style={{ transition: "stroke-dashoffset 1.1s cubic-bezier(0.2,0.7,0.1,1)" }}
-        />
-        <path
-          d={arc}
-          fill="none"
-          stroke={`url(#rg-${id})`}
+          stroke={c0}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={len}
@@ -123,7 +96,7 @@ function describeArc(cx: number, cy: number, r: number, from: number, to: number
 
 /** A thin horizontal meter for where / how / who. */
 export function Meter({ value, tone = "mint", label, detail }: { value: number; tone?: "mint" | "violet" | "sky" | "amber"; label: string; detail?: string }) {
-  const bg: Record<string, string> = { mint: "bg-mint", violet: "bg-violet", sky: "bg-sky", amber: "bg-amber" };
+  const bg: Record<string, string> = { mint: "bg-fg", violet: "bg-fg", sky: "bg-fg", amber: "bg-amber" };
   const v = Math.max(0, Math.min(100, value));
   return (
     <div>
@@ -131,7 +104,7 @@ export function Meter({ value, tone = "mint", label, detail }: { value: number; 
         <span className="text-fg-2">{label}</span>
         <span className="t-num font-medium text-fg">{Math.round(v)}%</span>
       </div>
-      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v)} aria-label={label}>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-bg-2" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v)} aria-label={label}>
         <div className={`h-full rounded-full ${bg[tone]} transition-[width] duration-1000 ease-out`} style={{ width: `${v}%` }} />
       </div>
       {detail && <p className="mt-1 text-[0.72rem] text-fg-3">{detail}</p>}

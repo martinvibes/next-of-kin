@@ -16,7 +16,7 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
   return (
     <button
       type="button"
-      className="inline-grid size-7 shrink-0 place-items-center rounded-md text-fg-3 transition-colors hover:bg-white/5 hover:text-fg"
+      className="inline-grid size-7 shrink-0 place-items-center rounded-md text-fg-3 transition-colors hover:bg-black/[0.04] hover:text-fg"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(value);

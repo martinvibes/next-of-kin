@@ -39,7 +39,7 @@ export function LetterView({ o }: { o: OwnerCtx }) {
 
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="paper min-w-0 px-6 py-8 focus-within:shadow-[0_0_0_2px_rgba(92,233,198,0.5),0_30px_80px_-30px_rgba(0,0,0,0.8)] sm:px-12 sm:py-12">
+      <div className="paper min-w-0 px-6 py-8 focus-within:shadow-[0_0_0_2px_rgba(25,24,22,0.35),0_30px_80px_-30px_rgba(0,0,0,0.8)] sm:px-12 sm:py-12">
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-black/10 pb-4 text-[0.8125rem] text-black/55">
           <span>
             For <span className="font-medium text-black/80">{o.dec?.heirName || "your heir"}</span>

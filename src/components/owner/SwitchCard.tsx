@@ -124,17 +124,17 @@ function LifeLine({ sw, now, beats }: { sw: SwitchStatus; now: number; beats: nu
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-16 w-full overflow-visible">
         <defs>
           <linearGradient id="beat-fade" x1="0" x2="1">
-            <stop offset="0" stopColor="#5ce9c6" stopOpacity="0.15" />
-            <stop offset="0.3" stopColor="#5ce9c6" stopOpacity="1" />
+            <stop offset="0" stopColor="#191816" stopOpacity="0.15" />
+            <stop offset="0.3" stopColor="#191816" stopOpacity="1" />
           </linearGradient>
         </defs>
-        <rect x={dueX} y={6} width={Math.max(0, W - dueX)} height={H - 12} rx={6} fill="rgba(246,185,86,0.07)" />
-        <line x1={dueX} x2={dueX} y1={6} y2={H - 6} stroke="rgba(246,185,86,0.45)" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
-        <path d={d} fill="none" stroke={released ? "#ff6f86" : "url(#beat-fade)"} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        {!released && <line x1={head} x2={W} y1={mid} y2={mid} stroke="rgba(255,255,255,0.18)" strokeWidth={2} strokeDasharray="2 6" vectorEffect="non-scaling-stroke" />}
+        <rect x={dueX} y={6} width={Math.max(0, W - dueX)} height={H - 12} rx={6} fill="rgba(180,105,14,0.06)" />
+        <line x1={dueX} x2={dueX} y1={6} y2={H - 6} stroke="rgba(180,105,14,0.45)" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+        <path d={d} fill="none" stroke={released ? "#c0352c" : "url(#beat-fade)"} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        {!released && <line x1={head} x2={W} y1={mid} y2={mid} stroke="rgba(25,24,22,0.22)" strokeWidth={2} strokeDasharray="2 6" vectorEffect="non-scaling-stroke" />}
       </svg>
       <div className="relative -mt-16 h-16">
-        {!released && <span className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-mint animate-beat" style={{ left: `${(head / W) * 100}%`, top: `${(mid / H) * 100}%` }} />}
+        {!released && <span className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ember animate-beat" style={{ left: `${(head / W) * 100}%`, top: `${(mid / H) * 100}%` }} />}
       </div>
       <div className="relative mt-1 h-4 text-[0.68rem] text-fg-3">
         <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${(x(alive) / W) * 100}%` }}>

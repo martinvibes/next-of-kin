@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Eye, EyeOff, HeartPulse, KeyRound, Lock, MailOpen, Printer, ScrollText, ShieldAlert, UserRound, Wrench } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Lock, Printer, ShieldAlert } from "lucide-react";
 import { decryptFieldOrNull, unlockVault } from "@/domain/crypto";
 import { formatAmount, formatInterval, formatUsd, relativeTime } from "@/domain/format";
+import type { Asset } from "@/domain/types";
 import { buildGuide, orphanedAssetFacts, type DecryptedFact, type DecryptedWallet, type GuideWallet } from "@/domain/heir";
 import { shortAddress } from "@/domain/ids";
 import type { HeirBundleResponse, ReleasedBundle, SealedBundle, StatusResponse } from "@/lib/api-types";
@@ -12,7 +13,6 @@ import { countdown, useNow } from "@/lib/time";
 import { ModeBanner } from "@/components/ModeBanner";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { BlobLink, CopyButton } from "@/components/Receipt";
-import { AssetAvatar } from "@/components/owner/Ledger";
 
 interface Opened {
   ownerName: string | null;
@@ -41,18 +41,18 @@ export function HeirApp() {
   }, []);
 
   return (
-    <div className="aurora min-h-dvh">
+    <div className="min-h-dvh">
       <ModeBanner status={status} />
       <SiteHeader current="heir" />
-      <main id="main" className="mx-auto w-full max-w-6xl px-4 sm:px-6">
+      <main id="main" className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6">
         {err ? (
           <p className="py-24 text-center text-fg-2" role="alert">
             {err}
           </p>
         ) : !bundle ? (
           <div className="mx-auto max-w-lg py-24" role="status">
-            <div className="skeleton mx-auto size-16 rounded-2xl" />
-            <div className="skeleton mx-auto mt-6 h-7 w-64" />
+            <div className="skeleton mx-auto h-5 w-20" />
+            <div className="skeleton mx-auto mt-6 h-10 w-72 max-w-full" />
             <div className="skeleton mx-auto mt-3 h-4 w-80 max-w-full" />
           </div>
         ) : bundle.phase !== "released" ? (
@@ -78,12 +78,10 @@ function Sealed({ b }: { b: SealedBundle }) {
 
   if (b.phase === "setup")
     return (
-      <section className="mx-auto flex max-w-lg flex-col items-center py-20 text-center animate-rise">
-        <span className="grid size-16 place-items-center rounded-2xl border border-line-2 bg-panel text-fg-3">
-          <MailOpen className="size-7" />
-        </span>
-        <h1 className="mt-7 text-[clamp(1.7rem,4vw,2.3rem)] leading-tight font-semibold tracking-[-0.03em]">No letter has been written here yet</h1>
-        <p className="mt-3 text-fg-2">When someone prepares one for you on this deployment, this is where it will open.</p>
+      <section className="mx-auto flex max-w-xl flex-col items-center py-24 text-center animate-rise">
+        <span className="pill pill-muted">Nothing here yet</span>
+        <h1 className="t-display mt-5 text-[clamp(2.2rem,5vw,3rem)] leading-[1.05]">No letter has been written here yet</h1>
+        <p className="mt-4 text-fg-2">When someone prepares one for you on this deployment, this is where it will open.</p>
       </section>
     );
 
@@ -91,44 +89,50 @@ function Sealed({ b }: { b: SealedBundle }) {
   const start = sw.lastAlive ? Date.parse(sw.lastAlive) : null;
   const end = sw.releaseAt ? Date.parse(sw.releaseAt) : null;
   const frac = start && end && end > start ? Math.min(1, Math.max(0, (now - start) / (end - start))) : 0;
+  const source = sw.lastAliveSource === "onchain" ? "an on-chain transaction, via Tatum" : sw.lastAliveSource === "checkin" ? "a check-in" : sw.lastAliveSource === "profile" ? "when the vault was set up" : "";
 
   return (
-    <section className="mx-auto flex max-w-2xl flex-col items-center py-16 text-center animate-rise sm:py-20">
-      <span className={`relative grid size-20 place-items-center rounded-3xl border ${overdue ? "border-amber/30 bg-amber-wash text-amber" : "border-mint/25 bg-mint-wash text-mint"}`}>
-        <Lock className="size-8" />
-        <span className={`absolute -inset-3 rounded-[28px] border ${overdue ? "border-amber/15" : "border-mint/10"}`} aria-hidden="true" />
-      </span>
-      <span className={`pill mt-8 ${overdue ? "pill-amber" : "pill-mint"}`}>{overdue ? "Check-in missed" : "Sealed"}</span>
-      <h1 className="mt-4 text-[clamp(1.8rem,4.5vw,2.7rem)] leading-[1.1] font-semibold tracking-[-0.035em]">{overdue ? "The owner has missed a check-in" : "This letter is still sealed"}</h1>
-      <p className="mt-4 max-w-lg text-fg-2">
+    <section className="mx-auto flex max-w-2xl flex-col items-center py-16 text-center animate-rise sm:py-24">
+      {overdue ? (
+        <span className="pill pill-amber">
+          <AlertTriangle /> Check-in missed
+        </span>
+      ) : (
+        <span className="pill pill-muted">
+          <Lock /> Sealed
+        </span>
+      )}
+      <h1 className="t-display mt-5 text-[clamp(2.3rem,5.5vw,3.25rem)] leading-[1.05]">{overdue ? "The owner has missed a check-in" : "This letter is still sealed"}</h1>
+      <p className="mt-4 max-w-lg text-[1.0625rem] text-fg-2">
         {overdue
           ? "A grace period has started. If they don't check in, and their Sui wallets stay quiet, the letter opens here."
           : "It opens only if the owner stops checking in and their Sui wallets go quiet for the whole interval. Nothing inside can be read until then."}
       </p>
 
-      <div className="card mt-10 w-full max-w-lg p-5 text-left">
-        <div className="grid grid-cols-2 gap-5">
-          <div>
-            <p className="flex items-center gap-1.5 text-[0.75rem] text-fg-3">
-              <HeartPulse className="size-3.5" /> Last sign of life
-            </p>
-            <p className="mt-1 font-semibold">{sw.lastAlive ? relativeTime(sw.lastAlive, new Date(now).toISOString()) : "—"}</p>
-            <p className="text-[0.72rem] text-fg-3">{sw.lastAliveSource === "onchain" ? "An on-chain transaction, via Tatum" : sw.lastAliveSource === "checkin" ? "A check-in" : sw.lastAliveSource === "profile" ? "When the vault was set up" : ""}</p>
-          </div>
-          <div>
-            <p className="flex items-center gap-1.5 text-[0.75rem] text-fg-3">
-              <MailOpen className="size-3.5" /> Opens, at the earliest
-            </p>
-            <p className={`t-num mt-1 font-semibold ${overdue ? "text-amber" : ""}`}>{opensIn !== null ? (opensIn > 0 ? `in ${countdown(opensIn)}` : "any moment") : "—"}</p>
-            {sw.releaseAt && <p className="text-[0.72rem] text-fg-3">{fmtDate(sw.releaseAt)}</p>}
-          </div>
-        </div>
-        <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]" aria-hidden="true">
-          <div className={`h-full rounded-full transition-[width] duration-1000 ease-linear ${overdue ? "bg-amber" : "bg-mint"}`} style={{ width: `${frac * 100}%` }} />
-        </div>
-        <p className="mt-2 text-[0.72rem] text-fg-3">
-          Owner checks in every {formatInterval(sw.intervalSec)}, then {formatInterval(sw.graceSec)} grace.
+      <div className="mt-14 w-full max-w-lg">
+        <p className="text-[0.8125rem] text-fg-3">Opens, at the earliest</p>
+        <p className="t-num mt-2 text-[clamp(2.75rem,9vw,4.25rem)] leading-none font-medium tracking-[-0.045em]" aria-live="off">
+          {opensIn !== null ? (opensIn > 0 ? countdown(opensIn) : "any moment") : "—"}
         </p>
+        {sw.releaseAt && <p className="mt-3 text-[0.8125rem] text-fg-3">{fmtDate(sw.releaseAt)}</p>}
+
+        <div className="relative mt-8 h-[2px] rounded-full bg-line" aria-hidden="true">
+          <div className="h-full rounded-full bg-ember transition-[width] duration-1000 ease-linear" style={{ width: `${frac * 100}%` }} />
+          <span className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ember animate-beat" style={{ left: `${frac * 100}%` }} />
+        </div>
+
+        <dl className="mt-8 grid grid-cols-2 border-t border-line text-left">
+          <div className="py-4 pr-4">
+            <dt className="text-[0.8125rem] text-fg-3">Last sign of life</dt>
+            <dd className="mt-1 font-medium">{sw.lastAlive ? relativeTime(sw.lastAlive, new Date(now).toISOString()) : "—"}</dd>
+            {source && <dd className="text-[0.78rem] text-fg-3">From {source}</dd>}
+          </div>
+          <div className="border-l border-line py-4 pl-4">
+            <dt className="text-[0.8125rem] text-fg-3">Check-in rhythm</dt>
+            <dd className="mt-1 font-medium">Every {formatInterval(sw.intervalSec)}</dd>
+            <dd className="text-[0.78rem] text-fg-3">then {formatInterval(sw.graceSec)} grace</dd>
+          </div>
+        </dl>
       </div>
     </section>
   );
@@ -171,27 +175,24 @@ function Envelope({ b, onOpen }: { b: ReleasedBundle; onOpen: (o: Opened) => voi
   }
 
   return (
-    <section className="mx-auto max-w-[440px] py-16 animate-rise sm:py-20">
-      <form onSubmit={open} className="card glow-mint p-7 sm:p-8" aria-labelledby="env-title">
-        <span className="grid size-12 place-items-center rounded-2xl bg-mint-wash text-mint">
-          <MailOpen className="size-6" />
-        </span>
-        <h1 id="env-title" className="mt-6 text-[1.6rem] leading-tight font-semibold tracking-[-0.03em]">
+    <section className="mx-auto max-w-[460px] py-16 animate-rise sm:py-24">
+      <form onSubmit={open} className="card p-7 sm:p-9" aria-labelledby="env-title">
+        <span className="pill pill-ember">Released</span>
+        <h1 id="env-title" className="t-display mt-5 text-[2.2rem] leading-[1.05]">
           A letter has been left for you
         </h1>
-        <p className="mt-2 text-[0.875rem] text-fg-2">It&rsquo;s encrypted. The passphrase was written down for you, often kept with a will or in a safe place. It never leaves this browser.</p>
-        <label htmlFor="heir-pass" className="label mt-7">
+        <p className="mt-3 text-[0.9375rem] text-fg-2">It&rsquo;s locked with a passphrase that was written down for you, often kept with a will. It never leaves this browser.</p>
+        <label htmlFor="heir-pass" className="label mt-8">
           Passphrase
         </label>
         <div className="relative">
-          <KeyRound className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-3" aria-hidden="true" />
-          <input id="heir-pass" className="input !pr-11 !pl-9" type={show ? "text" : "password"} autoComplete="off" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus required />
+          <input id="heir-pass" className="input !pr-11" type={show ? "text" : "password"} autoComplete="off" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus required />
           <button type="button" className="absolute top-1/2 right-1.5 grid size-8 -translate-y-1/2 place-items-center rounded-md text-fg-3 hover:text-fg" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide passphrase" : "Show passphrase"}>
             {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         </div>
         {err && (
-          <p className="mt-4 rounded-lg border border-rose/20 bg-rose-wash px-3 py-2 text-[0.8125rem] text-rose" role="alert">
+          <p className="mt-4 rounded-lg bg-rose-wash px-3.5 py-2.5 text-[0.8125rem] text-rose" role="alert">
             {err}
           </p>
         )}
@@ -220,17 +221,21 @@ function Audit({ b, className = "" }: { b: ReleasedBundle; className?: string })
   );
 }
 
-const NOTE_ICON = { where: KeyRound, how: Wrench, who: UserRound } as const;
-
-function Note({ field, label, value }: { field: keyof typeof NOTE_ICON; label: string; value?: string }) {
-  const Icon = NOTE_ICON[field];
+/** A plain grey coin with the ticker; staked positions get a small ring. */
+function Coin({ a }: { a: Pick<Asset, "symbol" | "kind"> }) {
   return (
-    <div className={`print-avoid rounded-xl border p-4 ${value ? "border-line bg-bg-2" : "border-dashed border-line-2"}`}>
-      <dt className="flex items-center gap-2 text-[0.75rem] font-medium text-fg-3">
-        <Icon className="size-3.5" aria-hidden="true" />
-        {label}
-      </dt>
-      <dd className={`mt-2 whitespace-pre-wrap ${value ? "text-[0.9375rem] leading-relaxed text-fg" : "text-[0.8125rem] text-fg-3"}`}>{value ?? "Not written down. Look through their devices and papers."}</dd>
+    <span className="relative grid size-8 shrink-0 place-items-center rounded-full border border-line bg-bg-2 text-[0.66rem] font-semibold text-fg-2" aria-hidden="true">
+      {a.symbol.slice(0, 3).toUpperCase()}
+      {a.kind === "stake" && <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-panel bg-fg" title="Staked" />}
+    </span>
+  );
+}
+
+function Note({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="print-avoid grid gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
+      <dt className="text-[0.8125rem] text-fg-3">{label}</dt>
+      <dd className={`whitespace-pre-wrap ${value ? "text-[0.9375rem] leading-relaxed text-fg" : "text-[0.875rem] text-fg-3 italic"}`}>{value ?? "Not written down. Look through their devices and papers."}</dd>
     </div>
   );
 }
@@ -238,106 +243,104 @@ function Note({ field, label, value }: { field: keyof typeof NOTE_ICON; label: s
 function Letter({ b, o, fixtures }: { b: ReleasedBundle; o: Opened; fixtures: boolean }) {
   const total = b.assets.reduce((s, a) => s + (a.usd ?? 0), 0);
   return (
-    <div className="mx-auto max-w-3xl py-10 animate-rise">
+    <div className="mx-auto max-w-3xl py-10 animate-rise sm:py-14">
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="flex items-center gap-2 text-[0.8125rem] text-fg-2">
-          <Lock className="size-3.5 text-mint" />
-          Decrypted in this browser.{" "}
-          {fixtures ? "Balances are fixture data on this deployment, not live." : `Balances read ${b.scannedAt ? relativeTime(b.scannedAt, new Date().toISOString()) : "—"} from Mainnet through Tatum.`}
+        <p className="flex items-start gap-2 text-[0.8125rem] text-fg-2">
+          <Lock className="mt-0.5 size-3.5 shrink-0 text-fg-3" aria-hidden="true" />
+          <span>
+            Opened in this browser.{" "}
+            {fixtures ? "Balances are fixture data on this deployment, not live." : `Balances read ${b.scannedAt ? relativeTime(b.scannedAt, new Date().toISOString()) : "—"} from Mainnet through Tatum.`}
+          </span>
         </p>
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => window.print()}>
           <Printer /> Print this guide
         </button>
       </div>
 
-      <article className="paper px-7 py-10 sm:px-14 sm:py-14" aria-labelledby="letter-to">
+      <article className="paper px-7 py-10 sm:px-16 sm:py-16" aria-labelledby="letter-to">
         <header className="flex flex-wrap items-start justify-between gap-6 border-b border-black/10 pb-6">
           <div>
-            <p id="letter-to" className="t-letter text-[1.2rem] text-[#1b1f27]">
+            <p id="letter-to" className="t-display text-[1.6rem] leading-tight">
               For {o.heirName ?? "you"}
             </p>
-            {o.heirContact && <p className="text-[0.8125rem] text-black/55">{o.heirContact}</p>}
+            {o.heirContact && <p className="mt-1 text-[0.8125rem] text-black/50">{o.heirContact}</p>}
           </div>
-          <p className="text-[0.8125rem] text-black/55">{b.letter ? new Date(b.letter.ts).toLocaleDateString(undefined, { dateStyle: "long" }) : ""}</p>
+          <p className="text-[0.8125rem] text-black/50">{b.letter ? new Date(b.letter.ts).toLocaleDateString(undefined, { dateStyle: "long" }) : ""}</p>
         </header>
         {o.letter ? (
-          <div className="t-letter mt-8 text-[1.12rem] leading-[1.85] whitespace-pre-wrap text-[#1b1f27]">{o.letter}</div>
+          <div className="t-letter mt-8 whitespace-pre-wrap">{o.letter}</div>
         ) : (
-          <p className="t-letter mt-8 text-[1.1rem] text-black/55">No personal letter was written. The guide below is everything they recorded.</p>
+          <p className="t-letter mt-8 text-black/50 italic">No personal letter was written. The guide below is everything they recorded.</p>
         )}
-        {o.ownerName && <p className="mt-8 font-[family-name:var(--font-hand)] text-[2.6rem] leading-none text-[#1b1f27]/85">{o.ownerName}</p>}
+        {o.ownerName && <p className="mt-10 font-[family-name:var(--font-hand)] text-[2.75rem] leading-none text-[#1d1b18]/85">{o.ownerName}</p>}
       </article>
 
-      <section className="print-break mt-16" aria-labelledby="guide-title">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 id="guide-title" className="flex items-center gap-2.5 text-[1.6rem] font-semibold tracking-[-0.03em]">
-              <ScrollText className="size-6 text-mint" aria-hidden="true" /> The recovery guide
-            </h2>
-            <p className="mt-1 text-fg-2">
-              {o.guide.length} {o.guide.length === 1 ? "wallet" : "wallets"}
-              {total > 0 ? `, about ${formatUsd(total)} at today's prices` : ""}. Work through them one at a time.
-            </p>
-          </div>
-        </div>
+      <section className="print-break mt-20" aria-labelledby="guide-title">
+        <h2 id="guide-title" className="t-display text-[clamp(2rem,4.5vw,2.6rem)] leading-[1.05]">
+          The recovery guide
+        </h2>
+        <p className="mt-3 text-fg-2">
+          {o.guide.length} {o.guide.length === 1 ? "wallet" : "wallets"}
+          {total > 0 ? `, about ${formatUsd(total)} at today's prices` : ""}. Work through them one at a time.
+        </p>
         {b.scanError && (
-          <p className="mt-4 flex gap-2 rounded-xl border border-amber/20 bg-amber-wash px-4 py-3 text-[0.8125rem] text-amber">
+          <p className="mt-5 flex gap-2 rounded-lg bg-amber-wash px-4 py-3 text-[0.8125rem] text-amber">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" /> Live balances couldn&rsquo;t be read just now ({b.scanError}). The notes below still apply.
           </p>
         )}
 
-        <div className="mt-6 space-y-5">
+        <div className="mt-8 space-y-6">
           {o.guide.map((w, wi) => {
             const value = w.assets.reduce((s, g) => s + (g.asset.usd ?? 0), 0);
             return (
               <article key={w.walletId} className="card print-avoid overflow-hidden" aria-label={w.label}>
-                <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 sm:px-6">
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span className="t-num grid size-7 shrink-0 place-items-center rounded-lg bg-white/[0.06] text-[0.75rem] font-semibold text-fg-2">{wi + 1}</span>
+                <header className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5 sm:px-7 sm:pt-6">
+                  <span className="flex min-w-0 items-baseline gap-3">
+                    <span className="t-num text-[0.9375rem] text-fg-3">{wi + 1}.</span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[1.05rem] font-semibold">{w.label}</span>
-                      <span className="block text-[0.75rem] text-fg-3">{w.chain === "sui" ? "Sui" : "Ethereum"} wallet</span>
+                      <span className="block truncate text-[1.15rem] font-semibold tracking-[-0.01em]">{w.label}</span>
+                      <span className="block text-[0.8125rem] text-fg-3">{w.chain === "sui" ? "Sui" : "Ethereum"} wallet</span>
                     </span>
                   </span>
-                  {value > 0 && <span className="t-num text-[1.05rem] font-semibold">{formatUsd(value)}</span>}
+                  {value > 0 && <span className="t-num text-[1.15rem] font-semibold">{formatUsd(value)}</span>}
                 </header>
-                <div className="p-5 sm:p-6">
-                  <div className="flex items-center gap-1 rounded-lg border border-line bg-bg-2 py-1 pr-1 pl-3">
+                <div className="px-5 pb-5 sm:px-7 sm:pb-6">
+                  <div className="sunk mt-4 flex items-center gap-1 py-1 pr-1 pl-3">
                     <span className="t-mono min-w-0 flex-1 truncate text-[0.75rem] text-fg-2 print:whitespace-normal print:break-all">{w.address}</span>
                     <CopyButton value={w.address} label="Copy address" />
                   </div>
-                  <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <Note field="where" label="Where the key is" value={w.where} />
-                    <Note field="how" label="How to open it" value={w.how} />
-                    <Note field="who" label="Who it's for" value={w.who} />
+                  <dl className="mt-2 divide-y divide-line">
+                    <Note label="Where the key is" value={w.where} />
+                    <Note label="How to open it" value={w.how} />
+                    <Note label="Who it's for" value={w.who} />
                   </dl>
                   {w.assets.length > 0 ? (
-                    <ul className="mt-5 space-y-4 border-t border-line pt-5">
+                    <ul className="mt-2 divide-y divide-line border-t border-line">
                       {w.assets.map((g) => (
-                        <li key={g.asset.key} className="print-avoid">
+                        <li key={g.asset.key} className="print-avoid py-5">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="flex items-center gap-3">
-                              <AssetAvatar a={g.asset} />
+                              <Coin a={g.asset} />
                               <span>
                                 <span className="block font-medium">
                                   {g.asset.kind === "stake" ? "Staked " : ""}
                                   {formatAmount(g.asset.amount, g.asset.symbol)}
                                 </span>
-                                {g.asset.meta.validatorName && <span className="block text-[0.75rem] text-fg-3">with {g.asset.meta.validatorName}</span>}
+                                {g.asset.meta.validatorName && <span className="block text-[0.78rem] text-fg-3">with {g.asset.meta.validatorName}</span>}
                               </span>
                             </span>
                             <span className="t-num text-fg-2">{g.asset.usd !== null ? formatUsd(g.asset.usd) : "no price"}</span>
                           </div>
                           {(g.how || g.who) && (
-                            <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-                              {g.how && <Note field="how" label="How, for this one" value={g.how} />}
-                              {g.who && <Note field="who" label="Who, for this one" value={g.who} />}
+                            <dl className="mt-2 divide-y divide-line">
+                              {g.how && <Note label="How, for this one" value={g.how} />}
+                              {g.who && <Note label="Who, for this one" value={g.who} />}
                             </dl>
                           )}
-                          <ol className="mt-3 space-y-1.5">
+                          <ol className="mt-3 space-y-2">
                             {g.steps.map((s, i) => (
                               <li key={s} className="flex gap-3 text-[0.875rem] text-fg-2">
-                                <span className="t-num mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-mint-wash text-[0.68rem] font-semibold text-mint">{i + 1}</span>
+                                <span className="t-num w-4 shrink-0 text-right text-fg-3">{i + 1}</span>
                                 <span>{s}</span>
                               </li>
                             ))}
@@ -346,7 +349,7 @@ function Letter({ b, o, fixtures }: { b: ReleasedBundle; o: Opened; fixtures: bo
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-5 border-t border-line pt-5 text-[0.8125rem] text-fg-3">Nothing in this wallet right now. Keep the notes; things sometimes arrive later.</p>
+                    <p className="border-t border-line pt-4 text-[0.875rem] text-fg-3">Nothing in this wallet right now. Keep the notes; things sometimes arrive later.</p>
                   )}
                 </div>
               </article>
@@ -355,13 +358,13 @@ function Letter({ b, o, fixtures }: { b: ReleasedBundle; o: Opened; fixtures: bo
         </div>
 
         {o.orphans.length > 0 && (
-          <div className="card mt-5 p-5 sm:p-6">
+          <div className="card mt-6 p-5 sm:p-7">
             <h3 className="font-semibold">Notes about things no longer on-chain</h3>
-            <ul className="mt-3 space-y-2 text-[0.875rem]">
+            <ul className="mt-3 divide-y divide-line text-[0.875rem]">
               {o.orphans.map((f) => (
-                <li key={`${f.target}:${f.field}`}>
+                <li key={`${f.target}:${f.field}`} className="py-2.5">
                   <span className="text-fg-3">
-                    {f.field} · {shortAddress(f.target.split(":")[1] ?? f.target)}:
+                    {f.field}, {shortAddress(f.target.split(":")[1] ?? f.target)}:
                   </span>{" "}
                   {f.value}
                 </li>
@@ -371,13 +374,13 @@ function Letter({ b, o, fixtures }: { b: ReleasedBundle; o: Opened; fixtures: bo
         )}
       </section>
 
-      <aside className="print-avoid mt-8 rounded-2xl border border-amber/20 bg-amber-wash p-5 sm:p-6" aria-labelledby="careful">
+      <aside className="print-avoid mt-8 rounded-xl bg-amber-wash p-5 sm:p-7" aria-labelledby="careful">
         <h2 id="careful" className="flex items-center gap-2 font-semibold text-amber">
-          <ShieldAlert className="size-4" /> Before you move anything
+          <ShieldAlert className="size-4" aria-hidden="true" /> Before you move anything
         </h2>
         <ul className="mt-3 space-y-2 text-[0.875rem] text-fg-2">
-          <li>Nobody legitimate will ask you for a recovery phrase. Not support staff, not an exchange, not us.</li>
           <li>Send a small test amount first, and check it arrives before sending the rest.</li>
+          <li>No one genuine needs a wallet&rsquo;s recovery phrase from you: not support staff, not an exchange, not us. If someone asks, stop.</li>
           <li>Inheritance has legal and tax sides. A lawyer or notary can tell you what applies where you live.</li>
         </ul>
       </aside>

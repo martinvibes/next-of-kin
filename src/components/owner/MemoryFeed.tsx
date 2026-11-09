@@ -17,7 +17,7 @@ export const KIND: Record<MemoryKind, { label: string; icon: LucideIcon; tone: s
   confirm: { label: "Confirmation", icon: CheckCheck, tone: "bg-amber-wash text-amber" },
   letter: { label: "Letter", icon: PenLine, tone: "bg-mint-wash text-mint" },
   checkin: { label: "Check-in", icon: HeartPulse, tone: "bg-mint-wash text-mint" },
-  snapshot: { label: "Snapshot", icon: TrendingUp, tone: "bg-white/[0.05] text-fg-2" },
+  snapshot: { label: "Snapshot", icon: TrendingUp, tone: "bg-black/[0.04] text-fg-2" },
   release: { label: "Release", icon: Unlock, tone: "bg-rose-wash text-rose" },
 };
 
@@ -127,7 +127,7 @@ export function MemoryView({ o }: { o: OwnerCtx }) {
                 type="button"
                 onClick={() => setFilter(k)}
                 aria-pressed={filter === k}
-                className={`rounded-md px-2 py-1 text-[0.72rem] transition-colors ${filter === k ? "bg-white/[0.08] text-fg" : "text-fg-3 hover:text-fg"}`}
+                className={`rounded-md px-2 py-1 text-[0.72rem] transition-colors ${filter === k ? "bg-black/[0.04] text-fg" : "text-fg-3 hover:text-fg"}`}
               >
                 {k === "all" ? "All" : KIND[k].label}
               </button>

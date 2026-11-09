@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Gauge, Info, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Meter, Ring } from "@/components/ui/Ring";
+import { Odometer } from "@/components/ui/Odometer";
+import { formatUsd } from "@/domain/format";
+import { greeting } from "@/lib/time";
 import type { ScanResponse } from "@/lib/api-types";
 import type { OwnerCtx } from "./useOwner";
 
@@ -25,82 +28,109 @@ export function dimensions(scan: ScanResponse | null) {
   return { where: pct(sum.where), how: pct(sum.how), who: pct(sum.who) };
 }
 
-export function ReadinessCard({ o, className = "" }: { o: OwnerCtx; className?: string }) {
+/** The top of Home: one sentence that says where things stand, the dial, and the three parts of it. */
+export function ReadinessHero({ o }: { o: OwnerCtx }) {
   const [explain, setExplain] = useState(false);
   const r = o.scan?.readiness;
   const d = dimensions(o.scan);
   const drifted = o.scan?.drift.drifted.length ?? 0;
   const score = r?.score ?? 0;
-  const tone = drifted > 0 ? "amber" : "mint";
+  const owner = o.dec?.ownerName?.trim().split(/\s+/)[0];
+  const heir = o.dec?.heirName?.trim() || "Your heir";
+  const wallets = o.state?.state.wallets.length ?? 0;
+
+  let headline: React.ReactNode = <span className="skeleton inline-block h-10 w-[22rem] max-w-full align-middle" />;
+  if (o.state && wallets === 0) headline = "Add a wallet and the questions begin.";
+  else if (r && r.basis === "usd")
+    headline = (
+      <>
+        {heir} could recover <Odometer value={formatUsd(r.coveredUsd)} /> of your {formatUsd(r.totalUsd)} today.
+      </>
+    );
+  else if (r) headline = `${heir} knows enough for ${r.covered} of ${r.assets} assets.`;
 
   return (
-    <section className={`card glow-mint relative flex min-w-0 flex-col overflow-hidden ${className}`} aria-labelledby="ready-title">
-      <div className="card-head border-0 pb-0">
-        <h2 id="ready-title" className="card-title">
-          <Gauge className="size-4" aria-hidden="true" />
-          Heir readiness
-        </h2>
-        <div className="flex items-center gap-1.5">
-          {r && (drifted > 0 ? <span className="pill pill-amber">{drifted} drifted</span> : score >= 100 ? <span className="pill pill-mint">Fully covered</span> : null)}
-          <button type="button" className="inline-grid size-7 place-items-center rounded-md text-fg-3 hover:bg-white/5 hover:text-fg" onClick={() => setExplain((e) => !e)} aria-expanded={explain} aria-label="How is readiness calculated?">
-            {explain ? <X className="size-4" /> : <Info className="size-4" />}
-          </button>
+    <section className="card overflow-hidden" aria-labelledby="ready-title">
+      <div className="flex flex-col gap-6 p-6 sm:p-8 md:flex-row md:items-center md:justify-between [&>[role=img]]:self-center">
+        <div className="min-w-0 max-w-[36rem]">
+          <p className="text-[0.875rem] text-fg-3">
+            {greeting()}
+            {owner ? `, ${owner}` : ""}
+          </p>
+          <h1 id="ready-title" className="t-display mt-2 text-[clamp(1.9rem,3.6vw,2.7rem)] leading-[1.1]">
+            {headline}
+          </h1>
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            {drifted > 0 && <span className="pill pill-amber">{drifted} balance{drifted === 1 ? "" : "s"} changed</span>}
+            {r && score >= 100 && drifted === 0 && <span className="pill pill-mint">Fully covered</span>}
+            <button type="button" className="btn btn-ghost btn-sm -ml-2" onClick={() => setExplain((e) => !e)} aria-expanded={explain}>
+              {explain ? "Hide the maths" : "How is this worked out?"}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => o.runScan({ refresh: true })} disabled={o.scanning}>
+              <RefreshCw className={o.scanning ? "animate-spin" : ""} />
+              {o.scanning ? "Reading the chain…" : "Rescan"}
+            </button>
+          </div>
         </div>
+        <Ring value={r ? score : 0} size={176} stroke={10} tone={drifted > 0 ? "amber" : "mint"} label={`Heir readiness ${score}%`}>
+          {r ? (
+            <>
+              <span className="t-num text-[2.6rem] leading-none font-semibold tracking-[-0.04em]">
+                <Odometer value={String(score)} />
+                <span className="ml-0.5 align-top text-[1.1rem] text-fg-3">%</span>
+              </span>
+              <span className="mt-1.5 text-[0.75rem] text-fg-3">
+                {r.covered} of {r.assets} {r.assets === 1 ? "asset" : "assets"} covered
+              </span>
+            </>
+          ) : (
+            <span className="text-[0.75rem] text-fg-3 animate-pulse-soft">Reading…</span>
+          )}
+        </Ring>
       </div>
 
-      {explain ? (
-        <div className="space-y-3 px-5 pt-3 pb-5 text-[0.8125rem] text-fg-2 animate-fade">
-          <p>An asset counts once your heir would know all three of these, and its balance hasn&rsquo;t drifted:</p>
-          <ul className="space-y-1.5">
-            <li>
-              <strong className="text-fg">Where</strong> the key is: a note on its wallet.
-            </li>
-            <li>
-              <strong className="text-fg">How</strong> to open it: on the asset, or its wallet if liquid. Staked SUI needs its own.
-            </li>
-            <li>
-              <strong className="text-fg">Who</strong> receives it: on the asset or its wallet.
-            </li>
-          </ul>
-          <p className="t-mono rounded-lg border border-line bg-bg-2 px-3 py-2 text-[0.75rem] text-fg">readiness = covered USD ÷ total USD × 100</p>
-          <p>Falls back to counting assets when nothing has a price. A balance below 75% or above 133% of what it was when you answered stops counting until you confirm it.</p>
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col items-center gap-6 px-5 pt-4 pb-6 sm:flex-row sm:items-center">
-          <Ring value={r ? score : 0} size={184} tone={tone} label={`Heir readiness ${score}%`}>
-            {r ? (
-              <>
-                <span className="t-num text-[2.6rem] leading-none font-semibold tracking-[-0.04em]">
-                  {score}
-                  <span className="ml-0.5 align-top text-[1.1rem] text-fg-2">%</span>
-                </span>
-                <span className="mt-1.5 text-[0.72rem] text-fg-3">
-                  {r.covered} of {r.assets} {r.assets === 1 ? "asset" : "assets"} covered
-                </span>
-              </>
-            ) : (
-              <span className="text-[0.75rem] text-fg-3 animate-pulse-soft">Reading…</span>
-            )}
-          </Ring>
-          <div className="w-full min-w-0 flex-1 space-y-4">
-            {d ? (
-              <>
-                <Meter label="Where the keys are" value={d.where} tone="mint" />
-                <Meter label="How to open them" value={d.how} tone="violet" />
-                <Meter label="Who receives what" value={d.who} tone="sky" />
-                {drifted > 0 && <p className="text-[0.72rem] leading-snug text-amber">Answers on a drifted asset stop counting until you confirm them.</p>}
-              </>
-            ) : (
-              [0, 1, 2].map((i) => (
-                <div key={i}>
-                  <div className="skeleton h-3.5 w-28" />
-                  <div className="skeleton mt-2 h-1.5 w-full" />
-                </div>
-              ))
-            )}
+      {explain && (
+        <div className="grid grid-cols-1 gap-6 border-t border-line bg-panel-2 px-6 py-6 text-[0.875rem] text-fg-2 animate-fade sm:px-8 md:grid-cols-2">
+          <div className="space-y-2">
+            <p>An asset counts once your heir would know all three, and its balance hasn&rsquo;t changed much since you answered:</p>
+            <ul className="space-y-1">
+              <li>
+                <strong className="font-medium text-fg">Where</strong> the key is, noted on its wallet.
+              </li>
+              <li>
+                <strong className="font-medium text-fg">How</strong> to open it. Staked SUI needs its own answer.
+              </li>
+              <li>
+                <strong className="font-medium text-fg">Who</strong> should receive it.
+              </li>
+            </ul>
+          </div>
+          <div className="space-y-2">
+            <p className="t-mono rounded-lg border border-line bg-panel px-3 py-2 text-[0.78rem] text-fg">readiness = covered USD ÷ total USD × 100</p>
+            <p>If nothing has a price it counts assets instead. A balance below 75% or above 133% of what it was stops counting until you confirm it.</p>
           </div>
         </div>
       )}
+
+      <div className="grid grid-cols-1 border-t border-line sm:grid-cols-3">
+        {d
+          ? [
+              { k: "Where the keys are", v: d.where },
+              { k: "How to open them", v: d.how },
+              { k: "Who receives what", v: d.who },
+            ].map((m, i) => (
+              <div key={m.k} className={`px-6 py-5 sm:px-8 ${i > 0 ? "border-t border-line sm:border-t-0 sm:border-l" : ""}`}>
+                <Meter label={m.k} value={m.v} />
+              </div>
+            ))
+          : [0, 1, 2].map((i) => (
+              <div key={i} className={`px-6 py-5 sm:px-8 ${i > 0 ? "border-t border-line sm:border-t-0 sm:border-l" : ""}`}>
+                <div className="skeleton h-3.5 w-28" />
+                <div className="skeleton mt-2.5 h-1.5 w-full" />
+              </div>
+            ))}
+      </div>
+      {drifted > 0 && <p className="border-t border-line bg-amber-wash px-6 py-3 text-[0.8125rem] text-amber sm:px-8">Answers on an asset whose balance changed stop counting until you confirm them on the Questions tab.</p>}
     </section>
   );
 }
