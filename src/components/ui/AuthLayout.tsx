@@ -1,28 +1,21 @@
-import Link from "next/link";
 import type { StatusResponse } from "@/lib/api-types";
 import { ModeBanner } from "@/components/ModeBanner";
-import { Wordmark } from "./Logo";
+import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { Backdrop } from "@/components/motion/Backdrop";
 
-/** Full-height, centred layout for unlock and setup. */
-export function AuthLayout({ status, children, wide }: { status: Pick<StatusResponse, "memory" | "chain"> | null; children: React.ReactNode; wide?: boolean }) {
+/** Full-height, centred layout for unlock and setup, under the same sky as the landing page. */
+export function AuthLayout({ status, children, wide, current }: { status: Pick<StatusResponse, "memory" | "chain"> | null; children: React.ReactNode; wide?: boolean; current?: "owner" | "setup" }) {
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden">
+    <div className="relative isolate flex min-h-dvh flex-col overflow-x-clip bg-bg">
       <ModeBanner status={status} />
-      <div className="dots-bg pointer-events-none absolute inset-x-0 top-0 h-[520px] [mask-image:radial-gradient(ellipse_60%_70%_at_50%_0%,#000_20%,transparent_75%)]" aria-hidden="true" />
-      <header className="relative mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Wordmark />
-        <nav className="flex items-center gap-1" aria-label="Main">
-          <Link href="/heir" className="tab">
-            For heirs
-          </Link>
-          <Link href="/proof" className="tab">
-            Proof
-          </Link>
-        </nav>
-      </header>
-      <main id="main" className={`relative mx-auto flex w-full flex-1 flex-col justify-center px-4 py-10 sm:px-6 ${wide ? "max-w-5xl" : "max-w-[440px]"}`}>
-        {children}
-      </main>
+      <SiteHeader overlay current={current} />
+      <div className="relative isolate">
+        <Backdrop height={760} />
+        <main id="main" className={`relative mx-auto flex min-h-[100svh] w-full flex-col justify-center px-4 pt-[calc(73px+32px)] pb-20 sm:px-6 ${wide ? "max-w-5xl" : "max-w-[480px]"}`}>
+          {children}
+        </main>
+      </div>
+      <SiteFooter cta={false} />
     </div>
   );
 }

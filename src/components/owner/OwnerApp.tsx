@@ -2,30 +2,52 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Lock,
+  ShieldCheck,
+} from "lucide-react";
 import { unlockVault } from "@/domain/crypto";
 import { relativeTime } from "@/domain/format";
 import type { StateResponse, StatusResponse } from "@/lib/api-types";
 import { api, ApiFailure, getOwnerSecret, setOwnerSecret } from "@/lib/client";
 import { AuthLayout } from "@/components/ui/AuthLayout";
 import { LogoMark } from "@/components/ui/Logo";
+import { Corners } from "@/components/motion/Backdrop";
 import { ModeBanner } from "@/components/ModeBanner";
 import { Dashboard } from "./Dashboard";
 
-type Stage = { k: "loading" } | { k: "error"; message: string } | { k: "no-setup"; status: StatusResponse } | { k: "locked"; status: StatusResponse } | { k: "ready"; status: StatusResponse; key: CryptoKey };
+type Stage =
+  | { k: "loading" }
+  | { k: "error"; message: string }
+  | { k: "no-setup"; status: StatusResponse }
+  | { k: "locked"; status: StatusResponse }
+  | { k: "ready"; status: StatusResponse; key: CryptoKey };
 
 export function OwnerApp() {
   const [stage, setStage] = useState<Stage>({ k: "loading" });
 
   useEffect(() => {
     api<StatusResponse>("/api/status")
-      .then((status) => setStage(status.setup ? { k: "locked", status } : { k: "no-setup", status }))
-      .catch((e) => setStage({ k: "error", message: e instanceof ApiFailure ? e.message : "Couldn't load." }));
+      .then((status) =>
+        setStage(
+          status.setup ? { k: "locked", status } : { k: "no-setup", status },
+        ),
+      )
+      .catch((e) =>
+        setStage({
+          k: "error",
+          message: e instanceof ApiFailure ? e.message : "Couldn't load.",
+        }),
+      );
   }, []);
 
   if (stage.k === "loading")
     return (
-      <AuthLayout status={null}>
+      <AuthLayout status={null} current="owner">
         <div className="card p-8" role="status">
           <div className="skeleton h-10 w-10 rounded-xl" />
           <div className="skeleton mt-6 h-6 w-48" />
@@ -37,11 +59,15 @@ export function OwnerApp() {
     );
   if (stage.k === "error")
     return (
-      <AuthLayout status={null}>
+      <AuthLayout status={null} current="owner">
         <div className="card p-8 text-center" role="alert">
           <p className="font-medium">Couldn&rsquo;t open the vault</p>
           <p className="mt-2 text-[0.875rem] text-fg-2">{stage.message}</p>
-          <button type="button" className="btn btn-secondary mt-6" onClick={() => window.location.reload()}>
+          <button
+            type="button"
+            className="btn btn-secondary mt-6"
+            onClick={() => window.location.reload()}
+          >
             Try again
           </button>
         </div>
@@ -49,27 +75,51 @@ export function OwnerApp() {
     );
   if (stage.k === "no-setup")
     return (
-      <AuthLayout status={stage.status}>
-        <div className="card p-8 shadow-[var(--shadow-pop)] animate-rise">
+      <AuthLayout status={stage.status} current="owner">
+        <div className="card hero-rise hero-rise--1 p-8 shadow-[var(--shadow-pop)]">
+          <Corners />
           <LogoMark size={40} />
-          <h1 className="t-display mt-6 text-[2.1rem] leading-[1.08]">Nothing to hand over yet</h1>
-          <p className="mt-2 text-[0.9375rem] text-fg-2">Choose a passphrase, name your heir and pick how often you&rsquo;ll check in. It takes about two minutes.</p>
+          <h1 className="t-display mt-6 text-[2.1rem] leading-[1.08]">
+            Nothing to hand over yet
+          </h1>
+          <p className="mt-2 text-[0.9375rem] text-fg-2">
+            Choose a passphrase, name your heir and pick how often you&rsquo;ll
+            check in. It takes about two minutes.
+          </p>
           <Link href="/setup" className="btn btn-primary btn-lg mt-7 w-full">
             Set up my vault <ArrowRight />
           </Link>
         </div>
       </AuthLayout>
     );
-  if (stage.k === "locked") return <Unlock status={stage.status} onUnlocked={(key) => setStage({ k: "ready", status: stage.status, key })} />;
+  if (stage.k === "locked")
+    return (
+      <Unlock
+        status={stage.status}
+        onUnlocked={(key) =>
+          setStage({ k: "ready", status: stage.status, key })
+        }
+      />
+    );
   return (
     <>
       <ModeBanner status={stage.status} />
-      <Dashboard cryptoKey={stage.key} status={stage.status} onLock={() => setStage({ k: "locked", status: stage.status })} />
+      <Dashboard
+        cryptoKey={stage.key}
+        status={stage.status}
+        onLock={() => setStage({ k: "locked", status: stage.status })}
+      />
     </>
   );
 }
 
-function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (key: CryptoKey) => void }) {
+function Unlock({
+  status,
+  onUnlocked,
+}: {
+  status: StatusResponse;
+  onUnlocked: (key: CryptoKey) => void;
+}) {
   const [secret, setSecret] = useState("");
   const [hasSecret, setHasSecret] = useState(false);
   const [pass, setPass] = useState("");
@@ -90,11 +140,18 @@ function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (k
     setBusy(true);
     setErr(null);
     try {
-      const s = await api<StateResponse>("/api/state", { secret: secret.trim() });
-      if (!s.state.vault) throw new Error("This vault has no passphrase yet. Finish setup first.");
+      const s = await api<StateResponse>("/api/state", {
+        secret: secret.trim(),
+      });
+      if (!s.state.vault)
+        throw new Error(
+          "This vault has no passphrase yet. Finish setup first.",
+        );
       const key = await unlockVault(s.state.vault, pass);
       if (!key) {
-        setErr("That passphrase doesn't open this vault. Check for typos and capital letters.");
+        setErr(
+          "That passphrase doesn't open this vault. Check for typos and capital letters.",
+        );
         return;
       }
       setOwnerSecret(secret.trim());
@@ -103,7 +160,9 @@ function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (k
       if (e instanceof ApiFailure && e.status === 401) {
         setHasSecret(false);
         setOwnerSecret(null);
-        setErr("That owner key isn't right. It's the OWNER_SECRET set for this deployment.");
+        setErr(
+          "That owner key isn't right. It's the OWNER_SECRET set for this deployment.",
+        );
       } else setErr(e instanceof Error ? e.message : "Couldn't unlock.");
     } finally {
       setBusy(false);
@@ -112,19 +171,35 @@ function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (k
 
   const facts: string[] = [];
   if (status.readiness) facts.push(`Readiness ${status.readiness.score}%`);
-  facts.push(`${status.memories} ${status.memories === 1 ? "memory" : "memories"}`);
-  if (status.switch.lastAlive) facts.push(`last seen ${relativeTime(status.switch.lastAlive, new Date().toISOString())}`);
+  facts.push(
+    `${status.memories} ${status.memories === 1 ? "memory" : "memories"}`,
+  );
+  if (status.switch.lastAlive)
+    facts.push(
+      `last seen ${relativeTime(status.switch.lastAlive, new Date().toISOString())}`,
+    );
 
   return (
-    <AuthLayout status={status}>
-      <form onSubmit={submit} className="card p-7 shadow-[var(--shadow-pop)] animate-rise sm:p-8" aria-labelledby="unlock-title">
+    <AuthLayout status={status} current="owner">
+      <form
+        onSubmit={submit}
+        className="card hero-rise hero-rise--1 p-7 shadow-[var(--shadow-pop)] sm:p-8"
+        aria-labelledby="unlock-title"
+      >
+        <Corners />
         <span className="grid size-11 place-items-center rounded-full bg-bg-2 text-fg">
           <Lock className="size-5" />
         </span>
-        <h1 id="unlock-title" className="t-display mt-6 text-[2.1rem] leading-[1.08]">
+        <h1
+          id="unlock-title"
+          className="t-display mt-6 text-[2.1rem] leading-[1.08]"
+        >
           Open your vault
         </h1>
-        <p className="mt-2 text-[0.875rem] text-fg-2">Your answers are decrypted here, in this browser. The passphrase never leaves it.</p>
+        <p className="mt-2 text-[0.875rem] text-fg-2">
+          Your answers are decrypted here, in this browser. The passphrase never
+          leaves it.
+        </p>
 
         {!hasSecret && (
           <div className="mt-7">
@@ -132,10 +207,23 @@ function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (k
               Owner key
             </label>
             <div className="relative">
-              <KeyRound className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-3" aria-hidden="true" />
-              <input id="owner-secret" className="input !pl-9" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} required />
+              <KeyRound
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-3"
+                aria-hidden="true"
+              />
+              <input
+                id="owner-secret"
+                className="input !pl-9"
+                type="password"
+                autoComplete="off"
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                required
+              />
             </div>
-            <p className="help">The OWNER_SECRET for this deployment. Asked once per session.</p>
+            <p className="help">
+              The OWNER_SECRET for this deployment. Asked once per session.
+            </p>
           </div>
         )}
         <div className={hasSecret ? "mt-7" : "mt-4"}>
@@ -153,17 +241,32 @@ function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (k
               required
               autoFocus={hasSecret}
             />
-            <button type="button" className="absolute top-1/2 right-1.5 grid size-8 -translate-y-1/2 place-items-center rounded-md text-fg-3 hover:text-fg" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide passphrase" : "Show passphrase"}>
-              {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            <button
+              type="button"
+              className="absolute top-1/2 right-1.5 grid size-8 -translate-y-1/2 place-items-center rounded-md text-fg-3 hover:text-fg"
+              onClick={() => setShow((s) => !s)}
+              aria-label={show ? "Hide passphrase" : "Show passphrase"}
+            >
+              {show ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
             </button>
           </div>
         </div>
         {err && (
-          <p className="mt-4 rounded-lg bg-rose-wash px-3 py-2 text-[0.8125rem] text-rose" role="alert">
+          <p
+            className="mt-4 rounded-lg bg-rose-wash px-3 py-2 text-[0.8125rem] text-rose"
+            role="alert"
+          >
             {err}
           </p>
         )}
-        <button className="btn btn-primary btn-lg mt-6 w-full" disabled={busy || !pass || !secret}>
+        <button
+          className="btn btn-primary btn-lg mt-6 w-full"
+          disabled={busy || !pass || !secret}
+        >
           {busy ? "Unlocking…" : "Unlock"}
         </button>
         {hasSecret && (
@@ -180,7 +283,7 @@ function Unlock({ status, onUnlocked }: { status: StatusResponse; onUnlocked: (k
           </button>
         )}
       </form>
-      <p className="mt-5 flex items-center justify-center gap-2 text-center text-[0.75rem] text-fg-3">
+      <p className="hero-rise hero-rise--3 mt-5 flex items-center justify-center gap-2 text-center text-[0.75rem] text-fg-2">
         <ShieldCheck className="size-3.5 text-ok" aria-hidden="true" />
         {facts.join(" · ")}
       </p>

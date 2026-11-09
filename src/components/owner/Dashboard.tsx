@@ -99,7 +99,7 @@ export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey;
         </div>
       )}
 
-      <div key={view} className="animate-rise">
+      <div key={view} className="view-enter">
         {view === "home" && <Overview o={o} go={go} ci={ci} />}
         {view === "questions" && <AgentView o={o} />}
         {view === "wallets" && (

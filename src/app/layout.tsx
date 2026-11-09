@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Mrs_Saint_Delafield, Newsreader } from "next/font/google";
 import "./globals.css";
+import { SmoothScroll } from "@/components/motion/SmoothScroll";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f7f6f3",
+  themeColor: "#fafafa",
   colorScheme: "light",
   width: "device-width",
   initialScale: 1,
@@ -28,7 +29,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable} ${newsreader.variable} ${signature.variable}`}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <SmoothScroll />
+        {children}
+      </body>
     </html>
   );
 }

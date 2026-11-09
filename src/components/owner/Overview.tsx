@@ -15,7 +15,7 @@ export function Overview({ o, go, ci }: { o: OwnerCtx; go: (v: View) => void; ci
   const heir = o.dec?.heirName?.trim() || "your heir";
 
   return (
-    <div className="space-y-8">
+    <div className="stagger space-y-8">
       <ReadinessHero o={o} />
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
