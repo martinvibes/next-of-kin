@@ -81,7 +81,7 @@ export function cleanCause(raw: unknown): string | undefined {
 
 // ─── Liveness + switch ──────────────────────────────────────────────────────
 
-const g = globalThis as unknown as { __nokLive?: TtlCache<OnchainLiveness>; __nokScan?: TtlCache<ScanResult>; __nokRelease?: Promise<unknown> | null };
+const g = globalThis as unknown as { __nokLive?: TtlCache<OnchainLiveness>; __nokScan?: TtlCache<ScanResult>; __nokRelease?: Promise<unknown> | null; __nokSnapLock?: Promise<unknown> };
 const liveCache = (g.__nokLive ??= new TtlCache<OnchainLiveness>());
 const scanCache = (g.__nokScan ??= new TtlCache<ScanResult>());
 
@@ -131,15 +131,25 @@ export function analyze(scan: ScanResult, state: NokState) {
 }
 
 /** Full scan response; writes a snapshot memory when the score moved by ≥ 1 point. */
+function withSnapshotLock<T>(fn: () => Promise<T>): Promise<T> {
+  const prev = g.__nokSnapLock ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  g.__nokSnapLock = run.catch(() => undefined);
+  return run;
+}
+
 export async function scanResponse(opts: { refresh?: boolean; cause?: string }): Promise<ScanResponse> {
   let state = await store.getState();
   const scan = await scanFor(state, opts);
   const { drift, readiness, questions } = analyze(scan, state);
 
-  let snapshot: StoredMemory | null = null;
-  const last = state.snapshots[state.snapshots.length - 1];
-  const moved = last ? Math.abs(last.score - readiness.score) >= 1 : readiness.assets > 0;
-  if (moved && state.vault) {
+  // Serialise the "did the score move?" decision so concurrent scans (two tabs,
+  // a double-mounted effect) can't both write the same snapshot.
+  const snapshot = await withSnapshotLock(async () => {
+    const fresh = await store.getState();
+    const last = fresh.snapshots[fresh.snapshots.length - 1];
+    const moved = last ? Math.abs(last.score - readiness.score) >= 1 : readiness.assets > 0;
+    if (!moved || !fresh.vault) return null;
     const memory: SnapshotMemory = {
       v: 1,
       id: newId(),
@@ -153,12 +163,13 @@ export async function scanResponse(opts: { refresh?: boolean; cause?: string }):
       ...(opts.cause ? { cause: opts.cause } : {}),
     };
     try {
-      snapshot = await store.write(memory);
-      state = await store.getState();
+      return await store.write(memory);
     } catch (err) {
       console.warn("[nok] snapshot write failed", err instanceof Error ? err.message : err);
+      return null;
     }
-  }
+  });
+  if (snapshot) state = await store.getState();
   return { scan, drift, readiness, questions, snapshot, snapshots: state.snapshots };
 }
 
