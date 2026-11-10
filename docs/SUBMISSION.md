@@ -7,14 +7,14 @@ Form: https://tatum.io/hackathon/total-recall · Deadline: Tue 10 Nov 2026, 17:0
 | Email | _yours_ |
 | Discord | _yours_ |
 | LinkedIn | _yours_ |
-| Tatum account ID | _from dashboard.tatum.io_ |
-| Sui address | _the Walrus Memory account owner address (shown by `npm run smoke`)_ |
-| MEMWAL_AGENT_ID | _the delegate public key shown on `/proof` and by `npm run smoke`; confirm it matches the Walrus Memory dashboard_ |
+| Tatum account ID | _from dashboard.tatum.io (account or profile settings)_ |
+| Sui address | `0x909f08dd8dcb5db81cbaff0073210270cf2aeaf780f4faa890c07bf48af4c946` |
+| MEMWAL_AGENT_ID | `7e6021c57dbc551b200d758ffdb106009f98c3f24c4d04e9572789d53eddff34` |
 | Track | Consumer Finance Apps (also for Best Walrus Memory) |
 | Repo | https://github.com/martinvibes/next-of-kin |
-| Live demo | _Vercel URL_ |
+| Live demo | https://next-of-kin-zeta.vercel.app (proof: https://next-of-kin-zeta.vercel.app/proof) |
 | Video | _YouTube / Loom link_ |
-| Blog | _dev.to link_ |
+| Blog | _dev.to link: paste docs/BLOG.md into a new dev.to post_ |
 
 ## Project name
 

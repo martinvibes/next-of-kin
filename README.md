@@ -8,8 +8,9 @@ It never stores keys or seed phrases.
 
 Built for **Total Recall** (Tatum × Walrus), Consumer Finance track.
 
-- Live demo: _added at deploy_
-- Mainnet proof: `/proof` on the live demo
+- Live demo: https://next-of-kin-zeta.vercel.app
+- Mainnet proof: https://next-of-kin-zeta.vercel.app/proof
+- Write-up: [docs/BLOG.md](docs/BLOG.md)
 - Licence: MIT
 
 > Every memory in this demo describes a real Mainnet position.
@@ -126,18 +127,31 @@ All calls go through the server via one throttled queue (350 ms gap, retries tha
 - There is a single owner per deployment.
 - The 3-minute interval is for demos only.
 - The release is enforced by this server. An operator could withhold it. Making the release trustless with Seal and a Move policy is the next step (see below).
-- The cache is per serverless instance. A cold instance rebuilds from Walrus, which is correct but slower.
+- The cache is per serverless instance. A cold instance rebuilds from Walrus, which is correct but slower. Instances resync with the relayer inventory every 30 seconds, and the owner's browser sends back its own recent writes so an instance that hasn't seen them yet still answers consistently.
 - Prices come from Tatum's rate API. Coins without a rate show "no price" and fall back to counting.
 - This is not legal advice.
 
 ## Mainnet proof
 
-_Filled in after the real data run:_
+The live deployment runs on Walrus Memory Mainnet and Sui Mainnet, with two wallets funded by the author: a **Main** Slush wallet (SUI and USDC) and a **Phone** wallet (SUI). Each answer, check-in and release below was made through the app's own UI.
 
-- Memories on Walrus Mainnet: **…**
-- Sample blob IDs: …
-- `MEMWAL_AGENT_ID` (delegate public key): `…`
-- Readiness progression: …% → …%
+- Memories on Walrus Mainnet: **20 (and growing with each check-in)**, listed with their blob IDs on [`/proof`](https://next-of-kin-zeta.vercel.app/proof)
+- Namespace `next-of-kin`, relayer `relayer.memory.walrus.xyz`
+- `MEMWAL_AGENT_ID` (delegate public key): `7e6021c57dbc551b200d758ffdb106009f98c3f24c4d04e9572789d53eddff34`
+- Walrus Memory account owner (Sui): `0x909f08dd8dcb5db81cbaff0073210270cf2aeaf780f4faa890c07bf48af4c946`
+- Readiness progression, from `snapshot` memories: **0% → 88% → 100%** across six answers about three real assets ($6.97 at the time)
+- The switch released on the 3-minute demo interval once check-ins stopped and the wallets were quiet on-chain (read through Tatum), and the heir decrypted the guide with the passphrase. Each release is a `release` memory.
+
+Sample blobs on Walruscan:
+
+| Memory | Blob |
+|---|---|
+| vault: encrypted passphrase check | [`jRLVWpQb…BX_sVNo`](https://walruscan.com/mainnet/blob/jRLVWpQbdL5fCt_lip1kXFbz7ZHtYGZrs0h-BX_sVNo) |
+| fact: where the key to `0x909f…c946` is | [`qrmiguBQ…xRGazYU`](https://walruscan.com/mainnet/blob/qrmiguBQbsiMbhPm0U5kEGZMfb3ZNjwYudCjxRGazYU) |
+| snapshot: heir readiness 100% | [`5DV-iipz…SRh_Y`](https://walruscan.com/mainnet/blob/5DV-iipzna7MuneZzT-gEbhmc5A00bSU_fF7heSRh_Y) |
+| letter: encrypted message to the heir | [`FFNYENCq…7sVc`](https://walruscan.com/mainnet/blob/FFNYENCqpJUj2ZQ1KfjQd7b8zRgsSwO_PgGIQMn7sVc) |
+
+Every memory in this demo describes a real Mainnet position.
 
 ## Run it yourself
 
