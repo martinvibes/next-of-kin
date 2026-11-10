@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "smoke": "tsx --conditions=react-server scripts/smoke.ts",
-    "check:store": "tsx --conditions=react-server scripts/dev-store-check.ts"
+    "check:store": "tsx --conditions=react-server scripts/dev-store-check.ts",
+    "memwal:account": "tsx scripts/memwal-account.ts"
   },
   "dependencies": {
     "@mysten-incubation/memwal": "^0.1.14",

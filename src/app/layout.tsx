@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Mrs_Saint_Delafield, Newsreader } from "next/font/google";
+import { Fraunces, Geist_Mono, Hanken_Grotesk, Mrs_Saint_Delafield } from "next/font/google";
 import "./globals.css";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
+const sans = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-hanken", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
-const newsreader = Newsreader({ subsets: ["latin"], style: ["normal", "italic"], axes: ["opsz"], variable: "--font-newsreader", display: "swap" });
+const display = Fraunces({ subsets: ["latin"], style: ["normal", "italic"], axes: ["opsz", "SOFT", "WONK"], variable: "--font-fraunces", display: "swap" });
 const signature = Mrs_Saint_Delafield({ weight: "400", subsets: ["latin"], variable: "--font-signature", display: "swap" });
 
 export const metadata: Metadata = {
@@ -28,7 +28,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable} ${newsreader.variable} ${signature.variable}`}>
+    <html lang="en" className={`${sans.variable} ${geistMono.variable} ${display.variable} ${signature.variable}`}>
       <body className="min-h-dvh">
         <SmoothScroll />
         {children}

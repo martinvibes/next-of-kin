@@ -17,7 +17,7 @@ export function Wordmark({ href = "/", size = 25, tag, light }: { href?: string;
   return (
     <Link href={href} className="group inline-flex items-center gap-2.5 rounded-sm" aria-label="Next of Kin, home">
       <span
-        className={`font-[family-name:var(--font-display)] leading-none font-semibold tracking-[-0.045em] whitespace-nowrap [font-variation-settings:'opsz'_72] ${light ? "text-[#d9d4da]" : "text-fg"}`}
+        className={`font-[family-name:var(--font-display)] leading-none font-semibold tracking-[-0.015em] [word-spacing:0.08em] whitespace-nowrap [font-variation-settings:'SOFT'_0,'WONK'_0] ${light ? "text-[#d9d4da]" : "text-fg"}`}
         style={{ fontSize: size }}
       >
         Next of Kin

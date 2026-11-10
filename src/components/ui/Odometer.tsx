@@ -29,6 +29,8 @@ export function Odometer({ value, className = "" }: { value: string; className?:
           );
         return (
           <span key={`d${key}`} className="odo-col" aria-hidden="true">
+            {/* sizes the column to the digit it lands on, so proportional figures don't leave gaps */}
+            <span className="invisible">{c}</span>
             <span className="odo-strip" style={{ transform: `translateY(-${Number(c)}em)`, transitionDelay: `${i * 70}ms` }}>
               {DIGITS.map((d) => (
                 <span key={d}>{d}</span>

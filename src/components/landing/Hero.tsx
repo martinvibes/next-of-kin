@@ -37,6 +37,11 @@ function HeirLink() {
 
 export function Hero() {
   const scene = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
 
   // The scene drifts down a little slower than the page: a gentle parallax.
   useEffect(() => {
@@ -59,13 +64,24 @@ export function Hero() {
   }, []);
 
   return (
-    <section className="relative isolate flex min-h-[max(720px,100svh)] flex-col overflow-hidden lg:max-h-[960px]" aria-labelledby="hero-title">
+    <section
+      className="relative isolate flex min-h-[max(720px,100svh)] flex-col overflow-hidden lg:max-h-[960px]"
+      aria-labelledby="hero-title"
+      onPointerMove={(e) => {
+        if (e.pointerType !== "mouse") return;
+        const r = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+        e.currentTarget.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+      }}
+    >
       <div ref={scene} className="absolute inset-0 -z-10 origin-top will-change-transform" aria-hidden="true">
-        <div className="absolute inset-0 animate-[kenBurns_2.6s_var(--ease-out)_both]">
-          <Image src="/scene/tree.webp" alt="" fill priority sizes="100vw" className="object-cover object-[68%_100%] contrast-[1.12] saturate-[1.08]" />
+        <div className="absolute inset-0 transition-transform duration-[2000ms] ease-[var(--ease-out)] [transform:translate3d(calc(var(--px,0)*14px),calc(var(--py,0)*8px),0)] motion-reduce:transform-none lg:-right-[26%]">
+          <div className="absolute inset-0 animate-[kenBurns_2.6s_var(--ease-out)_both]">
+            <Image src="/scene/tree.webp" alt="" fill priority sizes="100vw" className="object-cover object-[68%_100%] contrast-[1.12] saturate-[1.08]" />
+          </div>
         </div>
-        {/* fog that never quite settles */}
-        <div className="absolute inset-0 overflow-hidden">
+        {/* fog that never quite settles, and leans away from the pointer */}
+        <div className="absolute inset-0 overflow-hidden transition-transform duration-[1600ms] ease-[var(--ease-out)] [transform:translate3d(calc(var(--px,0)*-48px),calc(var(--py,0)*-20px),0)] motion-reduce:transform-none">
           <div className="absolute top-[36%] left-[-15%] h-[34%] w-[75%] rounded-[50%] bg-white/45 blur-[64px] [animation:fogDrift_28s_ease-in-out_infinite_alternate]" />
           <div className="absolute top-[52%] right-[-20%] h-[26%] w-[70%] rounded-[50%] bg-white/30 blur-[72px] [animation:fogDrift_36s_ease-in-out_infinite_alternate-reverse]" />
         </div>
@@ -77,11 +93,22 @@ export function Hero() {
       <div className="relative z-10 mx-auto flex w-full max-w-[1280px] flex-1 flex-col items-center px-6 pt-[calc(72px+40px)] sm:px-8 sm:pt-[calc(72px+56px)]">
         <div className="flex w-full flex-col items-center gap-7 sm:gap-10">
           <div className="flex w-full flex-col items-center gap-4 sm:gap-6">
-            <h1 id="hero-title" className="t-display hero-rise hero-rise--1 max-w-[920px] px-1 text-center text-[40px] leading-[42px] font-semibold text-[#0a0a0a] sm:text-[64px] sm:leading-[64px]">
-              Your crypto shouldn&rsquo;t <br className="hidden sm:block" />
-              die with you
+            <h1 id="hero-title" className={`t-display [font-variation-settings:'opsz'_120,'SOFT'_0,'WONK'_0] max-w-[920px] px-1 text-center text-[44px] leading-[46px] text-[#0a0a0a] sm:text-[68px] sm:leading-[68px] lg:text-[76px] lg:leading-[76px] ${shown ? "is-in" : ""}`}>
+              <span className="sr-only">Your crypto shouldn&rsquo;t die with you</span>
+              {[["Your", "crypto", "shouldn’t"], ["die", "with", "you"]].map((line, li) => (
+                <span key={li} className="block" aria-hidden="true">
+                  {line.map((w, wi) => (
+                    <span key={w}>
+                      <span className="split-w -mb-[0.12em] pb-[0.12em]">
+                        <span style={{ "--i": li * 3 + wi, "--d": "120ms" } as React.CSSProperties}>{w}</span>
+                      </span>
+                      {wi < line.length - 1 ? " " : null}
+                    </span>
+                  ))}
+                </span>
+              ))}
             </h1>
-            <p className="hero-rise hero-rise--2 max-w-[576px] px-1 text-center text-[15px] leading-6 text-[#4a3f4c] sm:text-[16px] sm:text-fg-2">
+            <p className="hero-rise hero-rise--2 max-w-[576px] px-1 text-center text-[15px] leading-6 text-[#4a3f4c] sm:text-[17px] sm:leading-7">
               <span className="sm:block">Next of Kin learns what your family would need to know about each wallet, </span>
               <span className="sm:block">keeps it sealed, and hands it over only if you stop checking in.</span>
             </p>

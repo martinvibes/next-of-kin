@@ -11,8 +11,18 @@ import { AnswerMock, CheckinMock, HandoverMock, WalletsMock } from "./Mocks";
 
 function Cell({ wash, title, body, children, className = "", mock = "", delay = 0, row }: { wash: string; title: string; body: React.ReactNode; children: React.ReactNode; className?: string; mock?: string; delay?: number; row?: boolean }) {
   return (
-    <Reveal delay={delay} className={`relative flex min-w-0 overflow-hidden ${row ? "flex-col lg:flex-row" : "flex-col"} ${wash} ${className}`}>
-      <div className={`shrink-0 p-6 sm:p-8 ${row ? "lg:w-[416px]" : ""}`}>
+    <Reveal
+      delay={delay}
+      className={`group/cell relative flex min-w-0 overflow-hidden ${row ? "flex-col lg:flex-row" : "flex-col"} ${wash} ${className}`}
+      onPointerMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+        e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+      }}
+    >
+      {/* a soft light that follows the pointer */}
+      <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover/cell:opacity-100 bg-[radial-gradient(460px_circle_at_var(--mx,50%)_var(--my,0px),rgba(255,255,255,0.6),transparent_65%)]" aria-hidden="true" />
+      <div className={`relative shrink-0 p-6 sm:p-8 ${row ? "lg:w-[416px]" : ""}`}>
         <h3 className="text-[22px] leading-7 font-medium tracking-[-0.02em]">{title}</h3>
         <p className="mt-1.5 max-w-[46ch] text-[14px] leading-5 text-fg-2">{body}</p>
       </div>
@@ -190,7 +200,7 @@ export function Promises() {
   return (
     <section id="promises" className="flex w-full flex-col items-center gap-12 px-6 py-20 sm:px-8" aria-labelledby="promises-title">
       <div className="flex max-w-[560px] flex-col items-center gap-3 text-center">
-        <SplitText id="promises-title" text="It never touches your keys" className="t-display text-[32px] leading-9 font-semibold text-[#0a0a0a] sm:text-[36px]" />
+        <SplitText id="promises-title" text="It never touches your keys" className="t-display text-[34px] leading-[38px] text-[#0a0a0a] sm:text-[40px] sm:leading-[44px]" />
         <Reveal as="p" delay={200} className="text-[14px] leading-5 text-[#737373]">
           Five things the code refuses to do, whoever runs the server.
         </Reveal>
@@ -264,7 +274,7 @@ const STACK = [
 export function BuiltOn() {
   return (
     <section id="built-on" className="flex w-full flex-col items-center gap-12 px-6 py-20 sm:px-8" aria-labelledby="built-title">
-      <SplitText id="built-title" text="Built on open infrastructure" className="t-display text-center text-[32px] leading-9 font-semibold text-[#0a0a0a] sm:text-[36px]" />
+      <SplitText id="built-title" text="Built on open infrastructure" className="t-display text-center text-[34px] leading-[38px] text-[#0a0a0a] sm:text-[40px] sm:leading-[44px]" />
       <div className="relative w-full max-w-[840px]">
         <span className="plus top-0 left-0" />
         <span className="plus top-0 left-1/2 hidden lg:block" />
@@ -320,7 +330,7 @@ export function Faq() {
   const [open, setOpen] = useState<number | null>(0);
   return (
     <section id="faq" className="flex w-full flex-col items-center gap-12 px-6 pt-20 pb-32 sm:px-8 sm:pb-40" aria-labelledby="faq-title">
-      <SplitText id="faq-title" text="Frequently asked questions" className="t-display text-center text-[32px] leading-9 font-semibold text-[#0a0a0a] sm:text-[36px]" />
+      <SplitText id="faq-title" text="Frequently asked questions" className="t-display text-center text-[34px] leading-[38px] text-[#0a0a0a] sm:text-[40px] sm:leading-[44px]" />
       <div className="flex w-full max-w-[768px] flex-col">
         {FAQ.map((f, i) => {
           const on = open === i;
