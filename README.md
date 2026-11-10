@@ -1,6 +1,29 @@
-# Next of Kin
+<p align="center">
+  <img src="docs/media/logo.svg" width="88" alt="Next of Kin logo" />
+</p>
 
-**Keys open wallets. Memory finds them.**
+<h1 align="center">Next of Kin</h1>
+
+<p align="center"><b>Keys open wallets. Memory finds them.</b><br/>Crypto inheritance that remembers what your family will need to know.</p>
+
+<p align="center">
+  <a href="https://next-of-kin-zeta.vercel.app"><img alt="Live on Sui Mainnet" src="https://img.shields.io/badge/live-Sui%20Mainnet-1F8A4C?style=flat-square" /></a>
+  <img alt="Walrus Memory" src="https://img.shields.io/badge/memory-Walrus-0E1014?style=flat-square" />
+  <img alt="Tatum" src="https://img.shields.io/badge/chain%20data-Tatum-0E1014?style=flat-square" />
+  <img alt="109 tests passing" src="https://img.shields.io/badge/tests-109%20passing-1F8A4C?style=flat-square" />
+  <img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-C2334D?style=flat-square" />
+</p>
+
+<p align="center">
+  <a href="https://next-of-kin-zeta.vercel.app"><b>Live demo</b></a> ·
+  <a href="https://next-of-kin-zeta.vercel.app/proof"><b>Mainnet proof</b></a> ·
+  <a href="docs/BLOG.md"><b>Write-up</b></a> ·
+  <a href="#see-it"><b>Screenshots</b></a>
+</p>
+
+<p align="center">
+  <a href="https://next-of-kin-zeta.vercel.app"><img src="docs/media/banner.jpg" width="100%" alt="Your crypto shouldn't die. Next of Kin, live on Sui Mainnet" /></a>
+</p>
 
 An agent that learns what your family would need to know about your crypto. It reads your wallets through Tatum and asks one question at a time, starting with the one that protects the most money. Each answer is encrypted in your browser and kept as a memory on Walrus. If you stop checking in and your wallets go quiet on-chain, it releases a step-by-step recovery guide to your heir.
 
@@ -35,7 +58,30 @@ Tools such as Shardium, Deadhand and Sarcophagus solve the key problem: seed-phr
 1. Open **`/proof`**. Every memory is listed with a Walruscan link. You can see the agent's public key, the relayer's health, the Tatum call counter and the latest Sui checkpoint, read live through Tatum.
 2. Press **Rebuild now**. The server throws away its cache and recovers every memory from Walrus alone, then compares the count with the relayer's inventory.
 3. Open **`/heir`**. Before release it shows only that the letter is sealed and when the owner last showed signs of life. After release it asks for the passphrase and decrypts the letter and recovery guide in the browser, with live balances.
-4. Read the **readiness chart** on the owner dashboard (screenshot below). Each point is a `snapshot` memory written when the score changed.
+4. Read the **readiness chart** on the owner dashboard ([screenshot](#see-it)). Each point is a `snapshot` memory written when the score changed.
+
+## See it
+
+Every frame below is the live app on Sui Mainnet. No mock-ups.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/landing.jpg" alt="Landing page" /><br/><sub><b>Landing.</b> What it does in one sentence, and a heir link to share.</sub></td>
+    <td width="50%"><img src="docs/media/dashboard.jpg" alt="Owner dashboard" /><br/><sub><b>Owner dashboard.</b> How much your heir could recover today, and what's still missing.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/seed-guard.jpg" alt="Seed-phrase guard" /><br/><sub><b>Seed-phrase guard.</b> A recovery phrase is refused in the browser and again on the server.</sub></td>
+    <td><img src="docs/media/readiness-chart.jpg" alt="Readiness chart" /><br/><sub><b>Readiness over time.</b> 0% → 88% → 100%, one Walrus memory per change.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/rebuild-from-walrus.jpg" alt="Rebuild from Walrus" /><br/><sub><b>Rebuild from Walrus.</b> Cache thrown away; 21 of 21 memories restored from Walrus alone.</sub></td>
+    <td><img src="docs/media/heir-sealed.jpg" alt="Heir view, sealed" /><br/><sub><b>Heir view, sealed.</b> While you keep checking in, the heir sees only a countdown.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/heir-letter.jpg" alt="Heir letter, decrypted" /><br/><sub><b>Heir view, released.</b> Decrypted in the browser with live balances. The passphrase never leaves it.</sub></td>
+    <td><img src="docs/media/mainnet-claim.jpg" alt="Walrus blob IDs" /><br/><sub><b>Real memories.</b> Every blob opens on walruscan.com.</sub></td>
+  </tr>
+</table>
 
 ## How it works
 
