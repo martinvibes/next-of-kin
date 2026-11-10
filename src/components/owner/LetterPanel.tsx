@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Check, Lock, PenLine } from "lucide-react";
 import { detectSecret, SECRET_MESSAGE } from "@/domain/seedGuard";
 import type { LetterMemory } from "@/domain/types";
-import { ApiFailure } from "@/lib/client";
+import { errorText, isRetryable } from "@/lib/client";
 import { Receipt } from "@/components/Receipt";
+import { toast } from "@/components/ui/Toast";
 import type { OwnerCtx } from "./useOwner";
 
 /** The human part. Written on the one lit sheet in the room; encrypted here, released with the guide. */
@@ -25,13 +26,19 @@ export function LetterView({ o }: { o: OwnerCtx }) {
 
   async function save() {
     if (secret || !dirty || !text.trim()) return;
+    const first = !saved.trim();
     setBusy(true);
     try {
       const memory: LetterMemory = { ...o.newMeta(), kind: "letter", value: await o.enc(text) };
       await o.write(memory, { rescan: false });
       setSavedAt(Date.now());
+      toast.success(first ? "Letter saved" : "Letter updated", `${heir === "your heir" ? "Your heir" : heir} can read it only if you stop checking in. ${o.savedTo}`);
     } catch (e) {
-      o.setError(e instanceof ApiFailure ? e.message : "Couldn't save the letter.");
+      toast.error(
+        "Letter not saved",
+        `${errorText(e, "It didn't save.")} Your words are still on the page.`,
+        isRetryable(e) ? { label: "Try again", onClick: () => void save() } : undefined,
+      );
     } finally {
       setBusy(false);
     }
@@ -98,7 +105,7 @@ export function LetterView({ o }: { o: OwnerCtx }) {
               </p>
             )}
             <button type="button" className="btn btn-primary mt-4 w-full" onClick={save} disabled={busy || secret || !dirty || !text.trim()}>
-              {busy ? "Encrypting…" : saved ? "Save changes" : "Save letter"}
+              {busy ? "Encrypting and saving…" : saved ? "Save changes" : "Save letter"}
             </button>
             <p className="mt-2 flex items-center justify-center gap-1 text-[0.72rem] text-fg-3">
               <span className="kbd">⌘</span>

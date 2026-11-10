@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
   Eye,
@@ -31,7 +31,7 @@ import type {
   SealedBundle,
   StatusResponse,
 } from "@/lib/api-types";
-import { api, ApiFailure } from "@/lib/client";
+import { api, errorText } from "@/lib/client";
 import { countdown, useNow } from "@/lib/time";
 import { ModeBanner } from "@/components/ModeBanner";
 import { Backdrop, Corners } from "@/components/motion/Backdrop";
@@ -61,7 +61,9 @@ export function HeirApp() {
   const [err, setErr] = useState<string | null>(null);
   const [opened, setOpened] = useState<Opened | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setErr(null);
+    // Status only feeds the mode banner; the page works without it.
     api<StatusResponse>("/api/status")
       .then(setStatus)
       .catch(() => {});
@@ -69,12 +71,12 @@ export function HeirApp() {
       .then(setBundle)
       .catch((e) =>
         setErr(
-          e instanceof ApiFailure
-            ? e.message
-            : "Couldn't reach this deployment.",
+          errorText(e, "Couldn't reach this deployment. Try again in a moment."),
         ),
       );
   }, []);
+
+  useEffect(load, [load]);
 
   return (
     <div className="relative isolate min-h-dvh overflow-x-clip bg-bg">
@@ -87,9 +89,25 @@ export function HeirApp() {
           className="mx-auto w-full max-w-6xl px-4 pt-[73px] pb-24 sm:px-6"
         >
           {err ? (
-            <p className="py-24 text-center text-fg-2" role="alert">
-              {err}
-            </p>
+            <div
+              className="mx-auto max-w-md py-24 text-center"
+              role="alert"
+            >
+              <p className="font-medium text-fg">
+                The letter couldn&rsquo;t be checked just now
+              </p>
+              <p className="mt-2 text-[0.9375rem] text-fg-2">{err}</p>
+              <p className="mt-2 text-[0.875rem] text-fg-3">
+                Whatever was left for you is still sealed and safe.
+              </p>
+              <button
+                type="button"
+                className="btn btn-secondary mt-6 cursor-pointer"
+                onClick={load}
+              >
+                Try again
+              </button>
+            </div>
           ) : !bundle ? (
             <div className="mx-auto max-w-lg py-24" role="status">
               <div className="skeleton mx-auto h-5 w-20" />
@@ -286,6 +304,10 @@ function Envelope({
         guide: buildGuide({ wallets, facts, assets: b.assets }),
         orphans: orphanedAssetFacts(facts, b.assets),
       });
+    } catch {
+      setErr(
+        "This browser couldn't decrypt the letter. Open this page over https in an up-to-date browser, then try the passphrase again.",
+      );
     } finally {
       setBusy(false);
     }

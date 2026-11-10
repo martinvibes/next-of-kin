@@ -197,7 +197,9 @@ export function SiteFooter({ cta = true }: { cta?: boolean }) {
         <div className="border-b border-white/10">
           <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-8 px-6 py-16 sm:px-8 sm:py-24 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex max-w-[560px] flex-col gap-3">
-              <h2 className="text-[30px] leading-[1.05] font-semibold tracking-[-0.035em] sm:text-[40px]">Leave a way in for the people you love</h2>
+              <h2 className="t-display text-[32px] leading-[1.08] sm:text-[44px]">
+                Leave a way in for <span className="t-accent text-[#f3eef0]">the people you love</span>
+              </h2>
               <p className="text-[15px] leading-[1.5] text-[#a79ea9]">Setup takes about two minutes. No account, and never a recovery phrase.</p>
             </div>
             <div className="flex flex-wrap gap-2.5">

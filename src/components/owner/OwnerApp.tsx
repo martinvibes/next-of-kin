@@ -40,7 +40,7 @@ export function OwnerApp() {
       .catch((e) =>
         setStage({
           k: "error",
-          message: e instanceof ApiFailure ? e.message : "Couldn't load.",
+          message: e instanceof ApiFailure ? e.message : "Couldn't reach this deployment. Try again in a moment.",
         }),
       );
   }, []);
@@ -144,8 +144,10 @@ function Unlock({
         secret: secret.trim(),
       });
       if (!s.state.vault)
-        throw new Error(
+        throw new ApiFailure(
           "This vault has no passphrase yet. Finish setup first.",
+          409,
+          "not-setup",
         );
       const key = await unlockVault(s.state.vault, pass);
       if (!key) {
@@ -163,7 +165,11 @@ function Unlock({
         setErr(
           "That owner key isn't right. It's the OWNER_SECRET set for this deployment.",
         );
-      } else setErr(e instanceof Error ? e.message : "Couldn't unlock.");
+      } else if (e instanceof ApiFailure) setErr(e.message);
+      else
+        setErr(
+          "This browser couldn't decrypt the vault. Open this page over https in an up-to-date browser, then try again.",
+        );
     } finally {
       setBusy(false);
     }
@@ -286,6 +292,17 @@ function Unlock({
       <p className="hero-rise hero-rise--3 mt-5 flex items-center justify-center gap-2 text-center text-[0.75rem] text-fg-2">
         <ShieldCheck className="size-3.5 text-ok" aria-hidden="true" />
         {facts.join(" · ")}
+      </p>
+      <p className="hero-rise hero-rise--3 mt-2 text-center text-[0.8125rem] text-fg-2">
+        Not the owner?{" "}
+        <Link href="/proof" className="font-medium text-fg underline decoration-line-2 underline-offset-4 hover:decoration-fg">
+          See every memory on the proof page
+        </Link>{" "}
+        or{" "}
+        <Link href="/heir" className="font-medium text-fg underline decoration-line-2 underline-offset-4 hover:decoration-fg">
+          open a letter
+        </Link>
+        .
       </p>
     </AuthLayout>
   );

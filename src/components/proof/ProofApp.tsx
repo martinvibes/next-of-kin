@@ -5,7 +5,8 @@ import { ExternalLink, Lock, RefreshCw, Server } from "lucide-react";
 import { relativeTime } from "@/domain/format";
 import type { MemoryKind } from "@/domain/types";
 import type { ProofResponse, RebuildResponse } from "@/lib/api-types";
-import { api, ApiFailure, getOwnerSecret } from "@/lib/client";
+import { api, errorText, getOwnerSecret, isRetryable } from "@/lib/client";
+import { toast } from "@/components/ui/Toast";
 import { ModeBanner } from "@/components/ModeBanner";
 import { Backdrop } from "@/components/motion/Backdrop";
 import { Reveal, SplitText } from "@/components/motion/Reveal";
@@ -59,9 +60,7 @@ export function ProofApp() {
         setErr(null);
       })
       .catch((e) =>
-        setErr(
-          e instanceof ApiFailure ? e.message : "Couldn't load the proof.",
-        ),
+        setErr(errorText(e, "Couldn't load the proof. Try again in a moment.")),
       );
   }, []);
 
@@ -69,7 +68,6 @@ export function ProofApp() {
 
   async function doRebuild() {
     setRebuilding(true);
-    setErr(null);
     try {
       const r = await api<RebuildResponse>("/api/rebuild", {
         body: {},
@@ -77,8 +75,26 @@ export function ProofApp() {
       });
       setRebuild(r);
       load();
+      const from = p?.memory.mode === "mock" ? "mock memory" : "Walrus";
+      const secs = (r.tookMs / 1000).toFixed(1);
+      if (r.complete)
+        toast.success(
+          `Rebuilt from ${from}`,
+          `Restored ${r.restored} ${r.restored === 1 ? "memory" : "memories"} in ${secs}s. Nothing missing.`,
+        );
+      else
+        toast.info(
+          `Rebuilt ${r.restored} ${r.restored === 1 ? "memory" : "memories"} from ${from}`,
+          r.message,
+        );
     } catch (e) {
-      setErr(e instanceof ApiFailure ? e.message : "Rebuild failed.");
+      toast.error(
+        "Rebuild didn't finish",
+        `${errorText(e, "The rebuild stopped part way.")} Nothing in ${p?.memory.mode === "mock" ? "mock memory" : "Walrus"} was touched; run it again to finish.`,
+        isRetryable(e)
+          ? { label: "Try again", onClick: () => void doRebuild() }
+          : undefined,
+      );
     } finally {
       setRebuilding(false);
     }
@@ -140,12 +156,19 @@ export function ProofApp() {
           </section>
 
           {err && (
-            <p
-              className="mb-6 rounded-lg bg-rose-wash px-4 py-3 text-[0.875rem] text-rose"
+            <div
+              className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg bg-rose-wash px-4 py-3 text-[0.875rem] text-rose"
               role="alert"
             >
-              {err}
-            </p>
+              <p className="min-w-0 flex-1 basis-64">{err}</p>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm cursor-pointer"
+                onClick={load}
+              >
+                <RefreshCw /> Try again
+              </button>
+            </div>
           )}
 
           {!p ? (
@@ -518,7 +541,7 @@ export function ProofApp() {
                                       }
                                     >
                                       {r.status === "failed"
-                                        ? "failed"
+                                        ? "not stored"
                                         : "writing…"}
                                     </span>
                                   </span>

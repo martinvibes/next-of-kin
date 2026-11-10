@@ -1,25 +1,23 @@
 import Link from "next/link";
 
-/** Two linked rings on an ink tile: kin, and the chain between them. Used where a square mark is needed. */
+const KEYHOLE = "M16 7.5a4.75 4.75 0 0 1 2.35 8.88L19.6 24.5H12.4l1.25-8.12A4.75 4.75 0 0 1 16 7.5z";
+
+/** A keyhole cut from a solid tile: the vault, and the one way in. */
 export function LogoMark({ size = 26, className = "", light }: { size?: number; className?: string; light?: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={`shrink-0 ${className}`} aria-hidden="true">
-      <rect x="0" y="0" width="32" height="32" rx="8" fill={light ? "#fff" : "#0c090c"} />
-      <circle cx="12.7" cy="16" r="5.4" fill="none" stroke={light ? "#0c090c" : "#fff"} strokeWidth="2.2" />
-      <circle cx="19.3" cy="16" r="5.4" fill="none" stroke={light ? "#0c090c" : "#fff"} strokeWidth="2.2" />
-      <circle cx="26" cy="6" r="2.2" fill="#ff6800" />
+      <rect width="32" height="32" rx="8" fill={light ? "#f4f4f4" : "#0a0a0a"} />
+      <path d={KEYHOLE} fill={light ? "#0a0a0a" : "#fff"} />
     </svg>
   );
 }
 
-/** The serif logotype. */
-export function Wordmark({ href = "/", size = 25, tag, light }: { href?: string; size?: number; tag?: React.ReactNode; light?: boolean }) {
+/** Mark plus logotype. */
+export function Wordmark({ href = "/", size = 24, tag, light }: { href?: string; size?: number; tag?: React.ReactNode; light?: boolean }) {
   return (
     <Link href={href} className="group inline-flex items-center gap-2.5 rounded-sm" aria-label="Next of Kin, home">
-      <span
-        className={`font-[family-name:var(--font-display)] leading-none font-semibold tracking-[-0.015em] [word-spacing:0.08em] whitespace-nowrap [font-variation-settings:'SOFT'_0,'WONK'_0] ${light ? "text-[#d9d4da]" : "text-fg"}`}
-        style={{ fontSize: size }}
-      >
+      <LogoMark size={Math.round(size * 1.12)} light={light} className="transition-transform duration-500 ease-[var(--ease-out)] group-hover:-rotate-6" />
+      <span className={`leading-none font-semibold tracking-[-0.035em] whitespace-nowrap ${light ? "text-[#ececec]" : "text-fg"}`} style={{ fontSize: size }}>
         Next of Kin
       </span>
       {tag}

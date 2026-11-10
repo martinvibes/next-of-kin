@@ -17,7 +17,8 @@ import type {
   StatusResponse,
   WriteResponse,
 } from "@/lib/api-types";
-import { api, ApiFailure, getOwnerSecret, setOwnerSecret } from "@/lib/client";
+import { api, ApiFailure, errorText, getOwnerSecret, setOwnerSecret } from "@/lib/client";
+import { toast } from "@/components/ui/Toast";
 import { Corners } from "@/components/motion/Backdrop";
 import { AuthLayout } from "@/components/ui/AuthLayout";
 import { ModeBanner } from "@/components/ModeBanner";
@@ -49,6 +50,8 @@ export function SetupFlow() {
     status: StatusResponse;
   } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  /** The vault key once its memory has landed, so a retry only redoes what failed. */
+  const sealed = useRef<CryptoKey | null>(null);
   const [minStep, setMinStep] = useState(0);
 
   useEffect(() => {
@@ -123,10 +126,8 @@ export function SetupFlow() {
       } catch (e) {
         setErr(
           e instanceof ApiFailure && e.status === 401
-            ? "That isn't this deployment's owner key."
-            : e instanceof Error
-              ? e.message
-              : "Couldn't check the key.",
+            ? "That isn't this deployment's owner key. Use the OWNER_SECRET value set on the server, exactly as written."
+            : errorText(e, "Couldn't check the key. Try again in a moment."),
         );
       } finally {
         setBusy(false);
@@ -160,19 +161,24 @@ export function SetupFlow() {
     setBusy(true);
     setErr(null);
     try {
-      const { vault, key } = await createVault(pass);
       const now = () => new Date().toISOString();
-      const vm: VaultMemory = {
-        v: 1,
-        id: newId(),
-        kind: "vault",
-        ts: now(),
-        ...vault,
-      };
-      await api<WriteResponse>("/api/memories", {
-        owner: true,
-        body: { memory: vm },
-      });
+      let key = sealed.current;
+      if (!key) {
+        const made = await createVault(pass);
+        const vm: VaultMemory = {
+          v: 1,
+          id: newId(),
+          kind: "vault",
+          ts: now(),
+          ...made.vault,
+        };
+        await api<WriteResponse>("/api/memories", {
+          owner: true,
+          body: { memory: vm },
+        });
+        key = made.key;
+        sealed.current = key;
+      }
       const pm: ProfileMemory = {
         v: 1,
         id: newId(),
@@ -191,11 +197,20 @@ export function SetupFlow() {
       const st = await api<StatusResponse>("/api/status");
       window.history.replaceState(null, "", "/owner");
       setDone({ key, status: st });
+      toast.success(
+        "Vault created",
+        `Your passphrase never left this browser. ${
+          st.memory.mode === "mainnet"
+            ? "The vault and your names were encrypted and sent to Walrus Memory."
+            : "The vault and your names were encrypted and saved to mock memory, not Walrus."
+        } Add a wallet next.`,
+      );
     } catch (e) {
+      const msg = errorText(e, "The vault wasn't sealed.");
       setErr(
-        e instanceof ApiFailure
-          ? e.message
-          : "Couldn't seal the vault. Nothing was half-saved; try again.",
+        sealed.current
+          ? `Your passphrase is saved, but your names didn't save yet. ${msg} Press the button again to finish; nothing needs retyping.`
+          : `${msg} Nothing was saved yet.`,
       );
     } finally {
       setBusy(false);

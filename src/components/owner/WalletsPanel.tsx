@@ -6,9 +6,10 @@ import { formatUsd, relativeTime } from "@/domain/format";
 import { shortAddress, walletIdOf } from "@/domain/ids";
 import { detectSecret, SECRET_MESSAGE } from "@/domain/seedGuard";
 import type { Chain, WalletMemory } from "@/domain/types";
-import { ApiFailure } from "@/lib/client";
+import { errorText, isRetryable } from "@/lib/client";
 import { CopyButton } from "@/components/Receipt";
-import type { OwnerCtx } from "./useOwner";
+import { toast } from "@/components/ui/Toast";
+import { readinessNote, type OwnerCtx } from "./useOwner";
 
 const ADDRESS: Record<Chain, RegExp> = {
   sui: /^0x[0-9a-fA-F]{64}$/,
@@ -37,27 +38,38 @@ export function WalletForm({ o, className = "", onDone }: { o: OwnerCtx; classNa
   const dupe = address.trim() && !problem && known.has(walletIdOf(chain, address.trim()));
   const labelSecret = detectSecret(label).blocked;
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (problem || dupe || labelSecret) return;
     setBusy(true);
     setErr(null);
     try {
       const addr = address.trim();
+      const name = label.trim() || (chain === "sui" ? "Sui wallet" : "Ethereum wallet");
       const memory: WalletMemory = {
         ...o.newMeta(),
         kind: "wallet",
         walletId: walletIdOf(chain, addr),
         chain,
         address: chain === "sui" ? addr.toLowerCase() : addr,
-        label: await o.enc(label.trim() || (chain === "sui" ? "Sui wallet" : "Ethereum wallet")),
+        label: await o.enc(name),
       };
-      await o.write(memory, { rescan: "refresh", cause: `added wallet ${shortAddress(addr)}` });
+      const res = await o.write(memory, { rescan: "refresh", cause: `added wallet ${shortAddress(addr)}` });
       setAddress("");
       setLabel("");
       onDone?.();
+      const read = res.scan?.scan.wallets.find((w) => w.walletId === memory.walletId);
+      const source = o.status.chain.mode === "live" ? "through Tatum" : "from fixture data, not live";
+      if (!read || read.error)
+        toast.info("Wallet added", `${name} (${shortAddress(addr)}) is in your vault, but its balances couldn't be read yet. They'll show after the next scan.`);
+      else {
+        const n = read.assets.length;
+        toast.success("Wallet added", `${name} (${shortAddress(addr)}): ${n} asset${n === 1 ? "" : "s"} read ${source}. ${readinessNote(res.before, res.after)} ${res.scan?.questions.some((q) => q.walletId === memory.walletId) ? "Its questions are on the Questions tab." : ""}`);
+      }
     } catch (e) {
-      setErr(e instanceof ApiFailure ? e.message : "Couldn't add that wallet.");
+      const msg = errorText(e, "The wallet wasn't added.");
+      if (isRetryable(e)) toast.error("Wallet not added", msg, { label: "Try again", onClick: () => void submit() });
+      else setErr(msg);
     } finally {
       setBusy(false);
     }

@@ -59,7 +59,7 @@ export function AssetsTable({ o, limit, onViewAll }: { o: OwnerCtx; limit?: numb
           </button>
         )
       ) : (
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => o.runScan({ refresh: true })} disabled={o.scanning}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => void o.rescan()} disabled={o.scanning}>
           <RefreshCw className={o.scanning ? "animate-spin" : ""} />
           {o.scanning ? "Reading…" : "Rescan"}
         </button>

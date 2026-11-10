@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { decryptFieldOrNull, encryptField } from "@/domain/crypto";
+import { summarize } from "@/domain/codec";
 import { factKey } from "@/domain/fold";
 import { newId } from "@/domain/ids";
 import { detectSecret, SECRET_MESSAGE } from "@/domain/seedGuard";
 import type { NokMemory, NokState, StoredMemory } from "@/domain/types";
 import type { ScanResponse, StateResponse, StatusResponse, WriteResponse } from "@/lib/api-types";
-import { api, ApiFailure } from "@/lib/client";
+import { api, ApiFailure, errorText } from "@/lib/client";
+import { toast } from "@/components/ui/Toast";
 
 export interface Decrypted {
   labels: Record<string, string>;
@@ -42,6 +44,20 @@ async function decryptAll(key: CryptoKey, state: NokState): Promise<Decrypted> {
 
 export type Receipts = StoredMemory[];
 
+export interface WriteResult {
+  stored: StoredMemory;
+  /** readiness before and after the write's rescan (null when unknown or not rescanned) */
+  before: number | null;
+  after: number | null;
+  scan: ScanResponse | null;
+}
+
+/** "Readiness 38% → 52%." when it moved, "" otherwise. */
+export function readinessNote(before: number | null, after: number | null): string {
+  if (before === null || after === null || before === after) return "";
+  return `Readiness ${before}% → ${after}%.`;
+}
+
 export function useOwner(key: CryptoKey, status: StatusResponse) {
   const [state, setState] = useState<StateResponse | null>(null);
   const [scan, setScan] = useState<ScanResponse | null>(null);
@@ -49,8 +65,8 @@ export function useOwner(key: CryptoKey, status: StatusResponse) {
   const [receipts, setReceipts] = useState<Receipts>([]);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastGain, setLastGain] = useState<{ delta: number; at: number } | null>(null);
   const polling = useRef(new Set<string>());
+  const score = useRef<number | null>(null);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -68,26 +84,57 @@ export function useOwner(key: CryptoKey, status: StatusResponse) {
     return s;
   }, [key]);
 
-  const runScan = useCallback(async (opts: { refresh?: boolean; cause?: string } = {}) => {
+  /** One scan; throws on failure. */
+  const scanNow = useCallback(async (opts: { refresh?: boolean; cause?: string } = {}) => {
     setScanning(true);
     try {
       const r = await api<ScanResponse>("/api/scan", { owner: true, body: opts });
+      score.current = r.readiness.score;
       if (!mounted.current) return r;
-      setScan((prev) => {
-        if (prev && r.readiness.score !== prev.readiness.score) setLastGain({ delta: r.readiness.score - prev.readiness.score, at: Date.now() });
-        return r;
-      });
+      setScan(r);
       if (r.snapshot) track(r.snapshot);
-      setError(null);
       return r;
-    } catch (e) {
-      setError(e instanceof ApiFailure ? e.message : "Scan failed.");
-      return null;
     } finally {
       if (mounted.current) setScanning(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Background scan: a failure shows in the dashboard's error bar. */
+  const runScan = useCallback(
+    async (opts: { refresh?: boolean; cause?: string } = {}) => {
+      try {
+        const r = await scanNow(opts);
+        if (mounted.current) setError(null);
+        return r;
+      } catch (e) {
+        if (mounted.current) setError(errorText(e, "Couldn't read your wallets just now. Try again in a minute."));
+        return null;
+      }
+    },
+    [scanNow],
+  );
+
+  /** The Rescan button: fresh chain reads, with a toast either way. */
+  const rescan = useCallback(
+    async function again(): Promise<void> {
+      const before = score.current;
+      try {
+        const r = await scanNow({ refresh: true });
+        if (mounted.current) setError(null);
+        const n = r.scan.wallets.length;
+        const unread = r.scan.wallets.filter((w) => w.error).length;
+        const source = status.chain.mode === "live" ? "through Tatum" : "from fixture data, not live";
+        if (n === 0) toast.info("Nothing to scan yet", "Add a wallet's public address and it will be read here.");
+        else if (unread > 0)
+          toast.info(`Read ${n - unread} of ${n} wallets`, `${unread} couldn't be read just now. Their drift checks wait for the next scan. ${readinessNote(before, r.readiness.score)}`);
+        else toast.success("Balances refreshed", `Read ${n} wallet${n === 1 ? "" : "s"} ${source}. ${readinessNote(before, r.readiness.score)}`);
+      } catch (e) {
+        toast.error("Couldn't refresh balances", errorText(e, "The scan didn't finish. Try again in a minute."), { label: "Try again", onClick: () => void again() });
+      }
+    },
+    [scanNow, status.chain.mode],
+  );
 
   const upsertReceipt = useCallback((stored: StoredMemory) => {
     setReceipts((rs) => {
@@ -114,6 +161,11 @@ export function useOwner(key: CryptoKey, status: StatusResponse) {
           upsertReceipt(r.stored);
           if (r.stored.status !== "pending") {
             polling.current.delete(id);
+            if (r.stored.status === "failed")
+              toast.error(
+                status.memory.mode === "mainnet" ? "A memory didn't reach Walrus" : "A memory didn't save",
+                `${summarize(r.stored.memory)}. It doesn't count until it's saved again, so repeat that step.`,
+              );
             return;
           }
         } catch {
@@ -124,20 +176,38 @@ export function useOwner(key: CryptoKey, status: StatusResponse) {
       };
       setTimeout(tick, 1500);
     },
-    [upsertReceipt],
+    [upsertReceipt, status.memory.mode],
   );
 
   /** Validate plaintext, encrypt, write, track, then refresh state + readiness. */
   const write = useCallback(
-    async (memory: NokMemory, opts: { cause?: string; rescan?: boolean | "refresh" } = {}) => {
+    async (memory: NokMemory, opts: { cause?: string; rescan?: boolean | "refresh" } = {}): Promise<WriteResult> => {
+      const before = score.current;
       const r = await api<WriteResponse>("/api/memories", { owner: true, body: { memory } });
       track(r.stored);
       await loadState();
-      if (opts.rescan !== false) await runScan({ cause: opts.cause, refresh: opts.rescan === "refresh" });
-      return r.stored;
+      // The write already landed; a failed rescan shows in the error bar, not as a failed save.
+      const s = opts.rescan !== false ? await runScan({ cause: opts.cause, refresh: opts.rescan === "refresh" }) : null;
+      return { stored: r.stored, before, after: s ? s.readiness.score : null, scan: s };
     },
     [loadState, runScan, track],
   );
+
+  /** Where a write went, said honestly for this deployment. */
+  const savedTo =
+    status.memory.mode === "mainnet" ? "Encrypted in this browser and sent to Walrus Memory." : "Encrypted in this browser and saved to mock memory, not Walrus.";
+
+  /** The error bar's "Try again": reload the vault, then rescan. */
+  const reload = useCallback(async () => {
+    setError(null);
+    try {
+      await loadState();
+    } catch (e) {
+      setError(errorText(e, "Couldn't load your vault."));
+      return;
+    }
+    await runScan({ refresh: true });
+  }, [loadState, runScan]);
 
   const enc = useCallback(
     async (plaintext: string) => {
@@ -161,7 +231,7 @@ export function useOwner(key: CryptoKey, status: StatusResponse) {
         await loadState();
         await runScan({ refresh: true });
       } catch (e) {
-        setError(e instanceof ApiFailure ? e.message : "Couldn't load your vault.");
+        setError(errorText(e, "Couldn't load your vault."));
       }
     })();
   }, [loadState, runScan]);
@@ -174,10 +244,12 @@ export function useOwner(key: CryptoKey, status: StatusResponse) {
     receipts,
     scanning,
     error,
-    lastGain,
     setError,
     loadState,
     runScan,
+    rescan,
+    reload,
+    savedTo,
     write,
     enc,
     checkin,

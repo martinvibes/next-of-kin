@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { TrendingDown, TrendingUp, X } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import type { StatusResponse } from "@/lib/api-types";
-import { ApiFailure, setOwnerSecret } from "@/lib/client";
+import { errorText, isRetryable, setOwnerSecret } from "@/lib/client";
+import { toast } from "@/components/ui/Toast";
 import { countdown, useNow } from "@/lib/time";
 import { useOwner, type OwnerCtx } from "./useOwner";
 import { CheckinButton, Shell, viewFromHash, type View } from "./Shell";
@@ -37,18 +38,27 @@ function useCheckin(o: OwnerCtx): Checkin {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crossed]);
 
-  const run = useCallback(async () => {
-    setBusy(true);
-    try {
-      await o.checkin();
-      setDone(true);
-      setTimeout(() => setDone(false), 2600);
-    } catch (e) {
-      o.setError(e instanceof ApiFailure ? e.message : "Check-in failed.");
-    } finally {
-      setBusy(false);
-    }
-  }, [o]);
+  const run = useCallback(
+    async function again() {
+      setBusy(true);
+      try {
+        const r = await o.checkin();
+        setDone(true);
+        setTimeout(() => setDone(false), 2600);
+        const due = r.switch.dueAt ? countdown(new Date(r.switch.dueAt).getTime() - Date.now()) : null;
+        toast.success("Checked in", `${due ? `The timer restarts: next check-in due in ${due}.` : "The timer restarts now."} ${o.savedTo}`);
+      } catch (e) {
+        toast.error(
+          "Check-in didn't go through",
+          `${errorText(e, "The server didn't confirm it.")} Your heir's letter stays sealed until the timer actually runs out.`,
+          isRetryable(e) ? { label: "Try again", onClick: () => void again() } : undefined,
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [o],
+  );
 
   return { busy, done, run, leftMs, left: leftMs !== null ? countdown(leftMs) : null };
 }
@@ -91,11 +101,16 @@ export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey;
       topRight={<CheckinButton sw={sw} busy={ci.busy} done={ci.done} onClick={ci.run} left={ci.left} />}
     >
       {o.error && (
-        <div className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-[#f1d5d0] bg-rose-wash px-4 py-3 text-sm text-rose animate-rise" role="alert">
-          <p>{o.error}</p>
-          <button type="button" className="shrink-0 opacity-80 hover:opacity-100" onClick={() => o.setError(null)} aria-label="Dismiss">
-            <X className="size-4" />
-          </button>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-[#f1d5d0] bg-rose-wash px-4 py-3 text-sm text-rose animate-rise" role="alert">
+          <p className="min-w-0 flex-1 basis-64">{o.error}</p>
+          <span className="flex shrink-0 items-center gap-1">
+            <button type="button" className="btn btn-secondary btn-sm cursor-pointer" onClick={() => void o.reload()} disabled={o.scanning}>
+              <RefreshCw className={o.scanning ? "animate-spin" : ""} /> {o.scanning ? "Trying…" : "Try again"}
+            </button>
+            <button type="button" className="grid size-8 cursor-pointer place-items-center rounded-md opacity-80 hover:opacity-100" onClick={() => o.setError(null)} aria-label="Dismiss">
+              <X className="size-4" />
+            </button>
+          </span>
         </div>
       )}
 
@@ -111,34 +126,6 @@ export function Dashboard({ cryptoKey, status, onLock }: { cryptoKey: CryptoKey;
         {view === "letter" && <LetterView o={o} />}
         {view === "activity" && <MemoryView o={o} />}
       </div>
-
-      <GainToast o={o} />
     </Shell>
-  );
-}
-
-/** A small toast whenever readiness moves, so every answer visibly pays off. */
-function GainToast({ o }: { o: OwnerCtx }) {
-  const [shown, setShown] = useState<{ delta: number; score: number } | null>(null);
-  useEffect(() => {
-    if (!o.lastGain || !o.scan) return;
-    setShown({ delta: o.lastGain.delta, score: o.scan.readiness.score });
-    const t = setTimeout(() => setShown(null), 3800);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [o.lastGain]);
-  if (!shown) return null;
-  const up = shown.delta >= 0;
-  return (
-    <div className="no-print fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-fg py-2 pr-5 pl-2 text-white shadow-[var(--shadow-pop)] animate-rise" role="status">
-      <span className={`grid size-8 place-items-center rounded-full ${up ? "bg-white/10" : "bg-amber"}`}>{up ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}</span>
-      <p className="text-[0.875rem] whitespace-nowrap">
-        <span className="font-semibold">
-          Readiness {up ? "+" : "−"}
-          {Math.abs(shown.delta)}
-        </span>
-        <span className="text-white/60"> · now {shown.score}%, saved to memory</span>
-      </p>
-    </div>
   );
 }

@@ -93,7 +93,7 @@ export function ReadinessHero({ o }: { o: OwnerCtx }) {
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                onClick={() => o.runScan({ refresh: true })}
+                onClick={() => void o.rescan()}
                 disabled={o.scanning}
               >
                 <RefreshCw className={o.scanning ? "animate-spin" : ""} />

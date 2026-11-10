@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronRight, Copy } from "lucide-react";
 import { LiveStats } from "./LiveStats";
+import { FogText } from "@/components/motion/Reveal";
 
 /** The link an heir will need, one click to copy. */
 function HeirLink() {
@@ -92,25 +93,27 @@ export function Hero() {
 
       <div className="relative z-10 mx-auto flex w-full max-w-[1280px] flex-1 flex-col items-center px-6 pt-[calc(72px+40px)] sm:px-8 sm:pt-[calc(72px+56px)]">
         <div className="flex w-full flex-col items-center gap-7 sm:gap-10">
-          <div className="flex w-full flex-col items-center gap-4 sm:gap-6">
-            <h1 id="hero-title" className={`t-display [font-variation-settings:'opsz'_120,'SOFT'_0,'WONK'_0] max-w-[920px] px-1 text-center text-[44px] leading-[46px] text-[#0a0a0a] sm:text-[68px] sm:leading-[68px] lg:text-[76px] lg:leading-[76px] ${shown ? "is-in" : ""}`}>
+          <div className="flex w-full flex-col items-center gap-5 sm:gap-8">
+            <h1 id="hero-title" className={`t-display max-w-[1040px] px-1 text-center text-[46px] leading-[48px] text-[#0a0a0a] sm:text-[72px] sm:leading-[72px] lg:text-[92px] lg:leading-[90px] ${shown ? "is-in" : ""}`}>
               <span className="sr-only">Your crypto shouldn&rsquo;t die with you</span>
-              {[["Your", "crypto", "shouldn’t"], ["die", "with", "you"]].map((line, li) => (
-                <span key={li} className="block" aria-hidden="true">
-                  {line.map((w, wi) => (
-                    <span key={w}>
-                      <span className="split-w -mb-[0.12em] pb-[0.12em]">
-                        <span style={{ "--i": li * 3 + wi, "--d": "120ms" } as React.CSSProperties}>{w}</span>
-                      </span>
-                      {wi < line.length - 1 ? " " : null}
-                    </span>
-                  ))}
-                </span>
-              ))}
+              <span className="block" aria-hidden="true">
+                {["Your", "crypto", "shouldn’t"].map((w, wi) => (
+                  <span key={w}>
+                    <span className="split-w -mb-[0.12em] pb-[0.12em]">
+                      <span style={{ "--i": wi, "--d": "120ms" } as React.CSSProperties}>{w}</span>
+                    </span>{" "}
+                  </span>
+                ))}
+              </span>
+              <span className="block" aria-hidden="true">
+                <span className="split-w -mb-[0.12em] pb-[0.12em]">
+                  <span style={{ "--i": 3, "--d": "120ms" } as React.CSSProperties}>die</span>
+                </span>{" "}
+                <FogText text="with you" start={520} className="pr-[0.04em]" />
+              </span>
             </h1>
-            <p className="hero-rise hero-rise--2 max-w-[576px] px-1 text-center text-[15px] leading-6 text-[#4a3f4c] sm:text-[17px] sm:leading-7">
-              <span className="sm:block">Next of Kin learns what your family would need to know about each wallet, </span>
-              <span className="sm:block">keeps it sealed, and hands it over only if you stop checking in.</span>
+            <p className="blur-in max-w-[600px] px-2 text-center text-[16px] leading-[26px] font-normal tracking-[-0.011em] text-balance text-[#3b3340]/85 sm:text-[19px] sm:leading-[30px]">
+              Next of Kin learns what your family would need to find and open each wallet, keeps it encrypted, and hands it over only if you stop checking in.
             </p>
           </div>
           <div className="hero-rise hero-rise--3 flex flex-col items-center gap-2 sm:flex-row">

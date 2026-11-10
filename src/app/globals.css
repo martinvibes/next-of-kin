@@ -76,10 +76,10 @@
   --color-rose: var(--rose);
   --color-rose-wash: var(--rose-wash);
 
-  --font-sans: var(--font-hanken), "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
-  --font-serif: var(--font-fraunces), "Fraunces", Georgia, serif;
-  --font-display: var(--font-fraunces), "Fraunces", Georgia, serif;
+  --font-serif: var(--font-instrument), "Instrument Serif", Georgia, serif;
+  --font-display: var(--font-sans);
   --font-hand: var(--font-signature), cursive;
 
   --shadow-pop: 0 1px 2px rgba(12, 9, 12, 0.04), 0 16px 40px -16px rgba(12, 9, 12, 0.22);
@@ -198,12 +198,17 @@
   .t-display {
     font-family: var(--font-display);
     font-weight: 500;
-    letter-spacing: -0.012em;
-    word-spacing: 0.06em;
-    font-optical-sizing: auto;
-    font-variation-settings:
-      "SOFT" 0,
-      "WONK" 0;
+    letter-spacing: -0.035em;
+    font-variation-settings: "opsz" 32;
+  }
+  /* the italic serif phrase inside a sans headline */
+  .t-accent {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1.07em;
+    letter-spacing: -0.01em;
+    font-variation-settings: normal;
   }
   .t-mono {
     font-family: var(--font-mono);
@@ -219,11 +224,8 @@
   }
   .t-letter {
     font-family: var(--font-serif);
-    font-variation-settings:
-      "SOFT" 50,
-      "WONK" 0;
-    font-size: 1.125rem;
-    line-height: 1.8;
+    font-size: 1.3125rem;
+    line-height: 1.6;
   }
 
   /* ── Surfaces ─────────────────────────────────────── */
@@ -631,7 +633,6 @@
   /* ── Rolling digits ───────────────────────────────── */
   .odo {
     display: inline-flex;
-    font-variant-numeric: tabular-nums;
     line-height: 1;
   }
   .odo-col {
@@ -1031,6 +1032,82 @@ html.lenis body {
     animation: none !important;
   }
   .split-w > span {
+    transform: none !important;
+  }
+}
+
+/* ── Pointer affordance: Tailwind v4 resets buttons to the default cursor ── */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  a[href],
+  summary,
+  label[for],
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  input[type="range"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* ── Hero: the italic phrase surfaces out of the fog, letter by letter ── */
+.fog-in .fl {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(14px);
+  transform: translate3d(0, 0.18em, 0) scale(1.04);
+  transition:
+    opacity 1.1s var(--ease-out),
+    filter 1.4s var(--ease-out),
+    transform 1.4s var(--ease-out);
+  transition-delay: calc(var(--fog-start, 520ms) + var(--c, 0) * 70ms);
+}
+.is-in .fog-in .fl {
+  opacity: 1;
+  filter: blur(0);
+  transform: none;
+}
+@keyframes blurIn {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+.blur-in {
+  animation: blurIn 1.3s var(--ease-out) var(--blur-delay, 0.9s) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fog-in .fl {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    transition: none;
+  }
+  .blur-in {
+    animation: none;
+  }
+}
+@media print {
+  .fog-in .fl,
+  .blur-in {
+    opacity: 1 !important;
+    filter: none !important;
     transform: none !important;
   }
 }

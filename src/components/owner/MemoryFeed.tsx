@@ -45,7 +45,7 @@ function Row({ s, mock, now }: { s: StoredMemory; mock: boolean; now: string }) 
         ) : (
           <>
             <StatusDot status={s.status} />
-            <span className={`text-[0.72rem] ${s.status === "failed" ? "text-rose" : "text-fg-3"}`}>{s.status === "failed" ? "failed" : "writing…"}</span>
+            <span className={`text-[0.72rem] ${s.status === "failed" ? "text-rose" : "text-fg-3"}`}>{s.status === "failed" ? "not stored" : "writing…"}</span>
           </>
         )}
       </span>

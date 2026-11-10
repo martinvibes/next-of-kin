@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Ban, ChevronDown, Database, EyeOff, Hourglass, KeyRound } from "lucide-react";
-import { Reveal, SplitText, useInView } from "@/components/motion/Reveal";
+import { FogText, Reveal, SplitText, useInView } from "@/components/motion/Reveal";
 import { AnswerMock, CheckinMock, HandoverMock, WalletsMock } from "./Mocks";
 
 /* ── Roots: the dark band, then the four steps in a framed grid ─── */
@@ -23,7 +23,7 @@ function Cell({ wash, title, body, children, className = "", mock = "", delay = 
       {/* a soft light that follows the pointer */}
       <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover/cell:opacity-100 bg-[radial-gradient(460px_circle_at_var(--mx,50%)_var(--my,0px),rgba(255,255,255,0.6),transparent_65%)]" aria-hidden="true" />
       <div className={`relative shrink-0 p-6 sm:p-8 ${row ? "lg:w-[416px]" : ""}`}>
-        <h3 className="text-[22px] leading-7 font-medium tracking-[-0.02em]">{title}</h3>
+        <h3 className="text-[22px] leading-7 font-semibold tracking-[-0.025em]">{title}</h3>
         <p className="mt-1.5 max-w-[46ch] text-[14px] leading-5 text-fg-2">{body}</p>
       </div>
       <div className={`relative min-h-0 flex-1 basis-auto ${mock}`}>
@@ -74,15 +74,15 @@ export function Roots() {
       </div>
 
       <div ref={ref} className={`mx-auto flex max-w-[768px] flex-col items-center gap-4 px-6 pt-20 pb-24 text-center sm:px-8 sm:pt-28 sm:pb-32 ${inView ? "is-in" : ""}`}>
-        <h2 id="roots-title" className="text-[32px] leading-[1.12] font-medium tracking-[-0.04em] text-balance text-white sm:text-[40px] lg:text-[56px]">
-          {"Every family tree has roots nobody can see.".split(" ").map((w, i, a) => (
-            <span key={i}>
+        <h2 id="roots-title" aria-label="Every family tree has roots nobody can see." className="t-display text-[34px] leading-[1.08] text-balance text-white sm:text-[44px] lg:text-[60px]">
+          {"Every family tree has roots".split(" ").map((w, i) => (
+            <span key={i} aria-hidden="true">
               <span className="split-w">
                 <span style={{ "--i": i } as React.CSSProperties}>{w}</span>
-              </span>
-              {i < a.length - 1 ? " " : null}
+              </span>{" "}
             </span>
           ))}
+          <FogText text="nobody can see." start={420} />
         </h2>
         <p className="max-w-[576px] text-[16px] leading-7 text-white/70">
           <span className={`block transition-all duration-700 ${inView ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`} style={{ transitionDelay: "450ms" }}>
@@ -200,7 +200,7 @@ export function Promises() {
   return (
     <section id="promises" className="flex w-full flex-col items-center gap-12 px-6 py-20 sm:px-8" aria-labelledby="promises-title">
       <div className="flex max-w-[560px] flex-col items-center gap-3 text-center">
-        <SplitText id="promises-title" text="It never touches your keys" className="t-display text-[34px] leading-[38px] text-[#0a0a0a] sm:text-[40px] sm:leading-[44px]" />
+        <SplitText id="promises-title" text="It never touches your keys" accent="your keys" className="t-display text-[34px] leading-[38px] text-[#0a0a0a] sm:text-[40px] sm:leading-[44px]" />
         <Reveal as="p" delay={200} className="text-[14px] leading-5 text-[#737373]">
           Five things the code refuses to do, whoever runs the server.
         </Reveal>
@@ -274,7 +274,7 @@ const STACK = [
 export function BuiltOn() {
   return (
     <section id="built-on" className="flex w-full flex-col items-center gap-12 px-6 py-20 sm:px-8" aria-labelledby="built-title">
-      <SplitText id="built-title" text="Built on open infrastructure" className="t-display text-center text-[34px] leading-[38px] text-[#0a0a0a] sm:text-[40px] sm:leading-[44px]" />
+      <SplitText id="built-title" text="Built on open infrastructure" accent="open infrastructure" className="t-display text-center text-[34px] leading-[38px] text-[#0a0a0a] sm:text-[40px] sm:leading-[44px]" />
       <div className="relative w-full max-w-[840px]">
         <span className="plus top-0 left-0" />
         <span className="plus top-0 left-1/2 hidden lg:block" />
@@ -292,7 +292,7 @@ export function BuiltOn() {
                   <span className="t-display grid size-8 place-items-center border border-line bg-white text-[18px] leading-none">{s.mark}</span>
                   <span className="t-mono text-[12px] font-medium tracking-wider text-[#737373] uppercase">{s.label}</span>
                 </div>
-                <h3 className="max-w-[22ch] text-[22px] leading-7 font-medium tracking-[-0.02em]">{s.title}</h3>
+                <h3 className="max-w-[22ch] text-[22px] leading-7 font-semibold tracking-[-0.025em]">{s.title}</h3>
                 <p className="text-[14px] leading-5 text-fg-2">{s.body}</p>
               </div>
               <div className="mt-auto border-t border-dashed border-line px-6 py-6 sm:px-8">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import type { StoredMemory } from "@/domain/types";
 import { summarize } from "@/domain/codec";
+import { toast } from "@/components/ui/Toast";
 
 export const WALRUSCAN_BLOB = (blobId: string) => `https://walruscan.com/mainnet/blob/${blobId}`;
 
@@ -16,14 +17,16 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
   return (
     <button
       type="button"
-      className="inline-grid size-7 shrink-0 place-items-center rounded-md text-fg-3 transition-colors hover:bg-black/[0.04] hover:text-fg"
+      className="inline-grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-fg-3 transition-colors hover:bg-black/[0.04] hover:text-fg"
       onClick={async () => {
+        const noun = label.replace(/^copy\s*/i, "").trim();
         try {
           await navigator.clipboard.writeText(value);
           setDone(true);
           setTimeout(() => setDone(false), 1400);
+          toast.success(noun ? `${noun[0].toUpperCase()}${noun.slice(1)} copied` : "Copied");
         } catch {
-          /* clipboard blocked */
+          toast.error("Couldn't copy", "This browser blocked the clipboard. Select the text and copy it by hand.");
         }
       }}
       aria-label={done ? "Copied" : `${label} ${value}`}
@@ -57,9 +60,9 @@ export function Receipt({ stored, mock }: { stored: StoredMemory; mock?: boolean
       <StatusDot status={status} />
       <div className="min-w-0 flex-1">
         <p className="font-medium text-fg">
-          {status === "pending" && "Writing to Walrus…"}
+          {status === "pending" && (mock ? "Writing to the mock store…" : "Writing to Walrus…")}
           {status === "stored" && (mock ? "Kept in the mock store" : "Kept on Walrus Mainnet")}
-          {status === "failed" && "Couldn't store this memory"}
+          {status === "failed" && "Not stored. Save this step again"}
         </p>
         <p className="truncate text-fg-3">{summarize(stored.memory)}</p>
       </div>
@@ -67,7 +70,9 @@ export function Receipt({ stored, mock }: { stored: StoredMemory; mock?: boolean
         {status === "stored" && stored.blobId ? (
           <BlobLink blobId={stored.blobId} mock={mock} />
         ) : status === "failed" ? (
-          <span className="text-rose">{stored.error ?? "failed"}</span>
+          <span className="text-rose" title={stored.error}>
+            not stored
+          </span>
         ) : (
           <span className="text-fg-3">{stored.jobId ? "job accepted" : "sending"}</span>
         )}

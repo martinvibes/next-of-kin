@@ -7,9 +7,10 @@ import { walletBaseline } from "@/domain/drift";
 import { detectSecret, SECRET_MESSAGE } from "@/domain/seedGuard";
 import { formatAmount, formatUsd } from "@/domain/format";
 import type { ConfirmResolution, Question } from "@/domain/types";
-import { ApiFailure } from "@/lib/client";
+import { errorText, isRetryable } from "@/lib/client";
 import { Receipt } from "@/components/Receipt";
-import type { OwnerCtx } from "./useOwner";
+import { toast } from "@/components/ui/Toast";
+import { readinessNote, type OwnerCtx } from "./useOwner";
 import { WalletForm } from "./WalletsPanel";
 
 function useQueue(o: OwnerCtx) {
@@ -151,10 +152,18 @@ function QuestionCard({ q, o, position, total, onSkip, footer }: { q: Question; 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
+  const [pending, setPending] = useState<ConfirmResolution | null>(null);
   const area = useRef<HTMLTextAreaElement>(null);
   const secret = text.length > 20 ? detectSecret(text) : { blocked: false };
   const asset = q.assetKey ? o.scan?.scan.assets.find((a) => a.key === q.assetKey) : undefined;
   const drift = q.kind === "drift";
+
+  /** Retryable failures get a toast with "Try again"; refusals about the text stay next to the field. */
+  function failed(title: string, e: unknown, retry: () => void) {
+    const msg = errorText(e, "It didn't save. Your text is still here.");
+    if (isRetryable(e)) toast.error(title, `${msg} Your text is still here.`, { label: "Try again", onClick: retry });
+    else setErr(msg);
+  }
 
   async function answer() {
     if (!q.field || !o.scan) return;
@@ -163,9 +172,10 @@ function QuestionCard({ q, o, position, total, onSkip, footer }: { q: Question; 
     try {
       const value = await o.enc(text);
       const baseline = q.assetKey ? (asset ? { [asset.key]: asset.amountRaw } : undefined) : walletBaseline(o.scan.scan.assets, q.walletId);
-      await o.write({ ...o.newMeta(), kind: "fact", target: q.target, field: q.field, value, baseline }, { cause: `answered ${q.field} · ${q.context.shortAddress}` });
+      const res = await o.write({ ...o.newMeta(), kind: "fact", target: q.target, field: q.field, value, baseline }, { cause: `answered ${q.field} · ${q.context.shortAddress}` });
+      toast.success("Answer saved", `${readinessNote(res.before, res.after)} ${o.savedTo}`);
     } catch (e) {
-      setErr(e instanceof ApiFailure ? e.message : "Couldn't save that answer.");
+      failed("Answer not saved", e, () => void answer());
     } finally {
       setBusy(false);
     }
@@ -175,17 +185,21 @@ function QuestionCard({ q, o, position, total, onSkip, footer }: { q: Question; 
     const assetKey = q.assetKey ?? q.target;
     const amount = q.context.drift?.current ?? asset?.amountRaw ?? "0";
     setBusy(true);
+    setPending(resolution);
     setErr(null);
     try {
       const note = resolution === "moved" && text.trim() ? await o.enc(text) : undefined;
-      await o.write(
+      const res = await o.write(
         { ...o.newMeta(), kind: "confirm", assetKey, amount, resolution, ...(note ? { note } : {}) },
         { cause: drift ? `resolved drift · ${q.context.drift?.symbol ?? ""} · ${q.context.shortAddress}` : `reviewed new ${q.context.symbol ?? "asset"}` },
       );
+      const title = !drift ? "Asset reviewed" : resolution === "accurate" ? "Marked as still accurate" : resolution === "moved" ? "Saved where it went" : "Marked as spent or sold";
+      toast.success(title, `${readinessNote(res.before, res.after)} ${o.savedTo}`);
     } catch (e) {
-      setErr(e instanceof ApiFailure ? e.message : "Couldn't save that.");
+      failed("Not saved", e, () => void confirm(resolution));
     } finally {
       setBusy(false);
+      setPending(null);
     }
   }
 
@@ -279,13 +293,13 @@ function QuestionCard({ q, o, position, total, onSkip, footer }: { q: Question; 
           <div className="mt-5">
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => confirm("accurate")}>
-                It&rsquo;s still accurate
+                {pending === "accurate" ? "Saving…" : <>It&rsquo;s still accurate</>}
               </button>
               <button type="button" className={`btn ${moving ? "btn-primary" : "btn-secondary"}`} disabled={busy} onClick={() => setMoving(true)} aria-expanded={moving}>
                 I moved it
               </button>
               <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => confirm("spent")}>
-                I spent or sold it
+                {pending === "spent" ? "Saving…" : "I spent or sold it"}
               </button>
             </div>
             {moving && (

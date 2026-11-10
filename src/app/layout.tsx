@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Geist_Mono, Hanken_Grotesk, Mrs_Saint_Delafield } from "next/font/google";
+import { Geist_Mono, Instrument_Serif, Inter, Mrs_Saint_Delafield } from "next/font/google";
 import "./globals.css";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
+import { Toaster } from "@/components/ui/Toast";
 
-const sans = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-hanken", display: "swap" });
+const sans = Inter({ subsets: ["latin"], axes: ["opsz"], variable: "--font-inter", display: "swap" });
+const serif = Instrument_Serif({ weight: "400", style: ["normal", "italic"], subsets: ["latin"], variable: "--font-instrument", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
-const display = Fraunces({ subsets: ["latin"], style: ["normal", "italic"], axes: ["opsz", "SOFT", "WONK"], variable: "--font-fraunces", display: "swap" });
 const signature = Mrs_Saint_Delafield({ weight: "400", subsets: ["latin"], variable: "--font-signature", display: "swap" });
 
 export const metadata: Metadata = {
@@ -28,10 +29,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${sans.variable} ${geistMono.variable} ${display.variable} ${signature.variable}`}>
+    <html lang="en" className={`${sans.variable} ${serif.variable} ${geistMono.variable} ${signature.variable}`}>
       <body className="min-h-dvh">
         <SmoothScroll />
         {children}
+        <Toaster />
       </body>
     </html>
   );
