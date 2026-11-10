@@ -1,5 +1,6 @@
 "use client";
 
+import type { StoredMemory } from "@/domain/types";
 import type { ApiError } from "./api-types";
 
 const OWNER_KEY = "nok.owner-secret";
@@ -72,11 +73,40 @@ export function isRetryable(e: unknown): boolean {
   return e.status === 0 || e.status === 429 || (e.status >= 500 && !(e.status === 503 && !e.code));
 }
 
+/**
+ * Writes this browser made in this session. Serverless instances don't share memory and the
+ * relayer lists a write only once it's indexed, so owner calls carry these back and whichever
+ * instance answers folds the same state (see store.adopt on the server).
+ */
+const recent = new Map<string, StoredMemory>();
+const RECENT_PATHS = ["/api/state", "/api/scan", "/api/memories", "/api/checkin"];
+const RECENT_MS = 10 * 60_000;
+
+function noteWrites(json: unknown) {
+  const r = json as { stored?: StoredMemory; snapshot?: StoredMemory | null } | null;
+  for (const m of [r?.stored, r?.snapshot]) {
+    if (!m?.memory?.id || !m.jobId) continue;
+    recent.delete(m.memory.id);
+    recent.set(m.memory.id, m);
+  }
+  while (recent.size > 40) recent.delete(recent.keys().next().value!);
+}
+
+function recentWrites(): StoredMemory[] {
+  const since = Date.now() - RECENT_MS;
+  return [...recent.values()].filter((m) => m.status !== "failed" && Date.parse(m.memory.ts) > since);
+}
+
 export async function api<T>(path: string, init: { method?: "GET" | "POST"; body?: unknown; owner?: boolean; secret?: string } = {}): Promise<T> {
   const headers: Record<string, string> = {};
   if (init.body !== undefined) headers["content-type"] = "application/json";
   const secret = init.secret ?? (init.owner ? getOwnerSecret() : null);
   if (secret) headers["x-owner-secret"] = secret;
+  const carry = secret && RECENT_PATHS.includes(path) ? recentWrites() : [];
+  if (carry.length && init.method !== "GET") {
+    init = { ...init, body: { ...((init.body as object | undefined) ?? {}), recent: carry } };
+    headers["content-type"] = "application/json";
+  }
   let res: Response;
   try {
     res = await fetch(path, {
@@ -100,5 +130,6 @@ export async function api<T>(path: string, init: { method?: "GET" | "POST"; body
     const message = explainFailure(res.status, err.code, err.error);
     throw new ApiFailure(message, res.status, err.code, err.error && err.error !== message ? err.error : undefined);
   }
+  noteWrites(json);
   return json as T;
 }

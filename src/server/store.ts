@@ -274,6 +274,32 @@ export async function write(memory: NokMemory): Promise<StoredMemory> {
   return record;
 }
 
+/**
+ * Serverless instances don't share memory, and the relayer lists a write only once it's
+ * indexed (~15s). The owner's browser sends back what it wrote this session so whichever
+ * instance answers next folds the same state. Only the codec text is trusted: it must decode
+ * to the claimed id, and records this instance already knows are left alone. Adopted records
+ * stay `pending` with their relayer job id, so they still poll through to `stored`.
+ */
+export async function adopt(records: unknown, isSafe: (m: NokMemory) => boolean): Promise<number> {
+  if (!Array.isArray(records)) return 0;
+  const s = await ensureLoaded();
+  let added = 0;
+  for (const r of records.slice(0, ADOPT_MAX)) {
+    if (!r || typeof r !== "object") continue;
+    const { text, jobId, memory } = r as Partial<StoredMemory>;
+    if (typeof text !== "string" || text.length > 64_000 || typeof jobId !== "string" || !memory?.id) continue;
+    if (s.byId.has(memory.id)) continue;
+    const decoded = decodeMemoryDetailed(text);
+    if (!decoded.ok || decoded.memory.id !== memory.id || !isSafe(decoded.memory)) continue;
+    s.byId.set(memory.id, { memory: decoded.memory, text, status: "pending", jobId });
+    added++;
+  }
+  if (added) await persist(s);
+  return added;
+}
+const ADOPT_MAX = 40;
+
 async function refreshOne(record: StoredMemory): Promise<string> {
   if (!record.jobId) return "unknown";
   const st = await jobStatus(record.jobId);

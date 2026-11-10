@@ -17,6 +17,7 @@ export const POST = route(async (req: Request) => {
   if (!isOwner(req)) return ownerUnauthorized();
   const body = await readJson(req);
   if (secretIn(body.memory)) return secretRejected();
+  await store.adopt(body.recent, (m) => !secretIn(m));
   const parsed = parseMemory(body.memory);
   if (!parsed.ok) return fail(`That memory isn't valid: ${parsed.error}`, 400, "invalid");
   const state = await store.getState();
