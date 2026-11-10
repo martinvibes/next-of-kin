@@ -60,6 +60,8 @@ interface StoreState {
   dropped: number;
   persistError: string | null;
   fingerprint: string;
+  /** last time this instance compared its cache with the relayer inventory */
+  lastSyncAt: number;
 }
 
 const CACHE_VERSION = 1;
@@ -84,6 +86,7 @@ function state(): StoreState {
       dropped: 0,
       persistError: null,
       fingerprint: fp,
+      lastSyncAt: Date.now(),
     };
   }
   return g.__nokStore;
@@ -155,7 +158,10 @@ async function loadFile(s: StoreState): Promise<boolean> {
 /** Load once per instance: cache file first, otherwise a full rebuild from Walrus (single-flight). */
 async function ensureLoaded(): Promise<StoreState> {
   const s = state();
-  if (s.loaded) return s;
+  if (s.loaded) {
+    await maybeResync(s);
+    return s;
+  }
   s.loadPromise ??= (async () => {
     const fromFile = await loadFile(s);
     if (!fromFile) {
@@ -172,6 +178,24 @@ async function ensureLoaded(): Promise<StoreState> {
   })();
   await s.loadPromise;
   return s;
+}
+
+/**
+ * Each serverless instance loads once, so another instance's writes would stay invisible.
+ * Every RESYNC_MS, compare the relayer inventory with this cache and pull in what's missing.
+ */
+const RESYNC_MS = 30_000;
+
+async function maybeResync(s: StoreState): Promise<void> {
+  if (memoryMode() !== "mainnet" || s.rebuildPromise || Date.now() - s.lastSyncAt < RESYNC_MS) return;
+  s.lastSyncAt = Date.now();
+  try {
+    const listed = (await listAll()).length;
+    const stored = [...s.byId.values()].filter((m) => m.status === "stored").length;
+    if (listed > stored) await rebuildInto(s);
+  } catch (err) {
+    console.warn("[nok] resync with Walrus skipped:", err instanceof Error ? err.message : err);
+  }
 }
 
 function sortByTs(list: StoredMemory[]): StoredMemory[] {
@@ -399,9 +423,10 @@ async function rebuildInto(s: StoreState): Promise<RebuildReport> {
 
     const { memories, dropped } = decodeAll(c);
 
-    // Keep local writes the relayer hasn't indexed yet, so a rebuild never hides an in-flight answer.
+    // Keep this instance's own writes that recall can't find yet (pending, or stored but not
+    // indexed), so a rebuild never hides a fresh answer. A clear-first rebuild starts empty.
     for (const [id, rec] of s.byId) {
-      if (!memories.has(id) && rec.status === "pending") memories.set(id, rec);
+      if (!memories.has(id) && rec.status !== "failed") memories.set(id, rec);
     }
     s.byId = memories;
     s.dropped = dropped;
