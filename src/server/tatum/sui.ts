@@ -142,12 +142,31 @@ export async function stakedSui(address: string): Promise<StakedSuiPosition[]> {
 
 // ─── Liveness ───────────────────────────────────────────────────────────────
 
+/**
+ * How far back to look for the owner's last transaction. Gateways prune old history and
+ * reject scans that start below their earliest checkpoint, so the scan starts here.
+ * About 20M checkpoints is roughly two months, far longer than any check-in interval.
+ */
+const SENT_WINDOW = 20_000_000;
+let checkpointCache: { at: number; seq: number } | null = null;
+
+async function recentCheckpointFloor(): Promise<number> {
+  if (!checkpointCache || Date.now() - checkpointCache.at > 60_000) {
+    const cp = await latestCheckpoint();
+    checkpointCache = { at: Date.now(), seq: Number(cp.sequenceNumber) };
+  }
+  return Math.max(0, checkpointCache.seq - SENT_WINDOW);
+}
+
 /** Timestamp of the latest transaction this address SENT (failed ones count: the owner still signed). */
 export async function lastOutgoingTx(address: string): Promise<string | null> {
-  const res = await suiClient().listTransactions({ filter: { sender: address }, order: "descending", limit: 1 });
-  const first = res.transactions[0];
-  const tx = first?.Transaction ?? first?.FailedTransaction;
-  return tx?.timestampMs ? new Date(tx.timestampMs).toISOString() : null;
+  const after = await recentCheckpointFloor();
+  const data = await rawQuery<{ transactions: { nodes: { effects: { timestamp: string | null } | null }[] } | null }>(
+    "query nokLastSent($a: SuiAddress!, $after: UInt53!) { transactions(last: 1, filter: { sentAddress: $a, afterCheckpoint: $after }) { nodes { effects { timestamp } } } }",
+    { a: address, after },
+  );
+  const ts = data.transactions?.nodes[0]?.effects?.timestamp;
+  return ts ? new Date(ts).toISOString() : null;
 }
 
 // ─── Raw queries ────────────────────────────────────────────────────────────
